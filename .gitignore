@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# NX 模型和脚本（测试产物）
+output/models/*.prt
+output/scripts/*.cs
+
+# 日志
+logs/
+
+# 前端
+frontend/node_modules/
+frontend/.next/
+
+# 系统
+*.lnk
+.DS_Store
+Thumbs.db

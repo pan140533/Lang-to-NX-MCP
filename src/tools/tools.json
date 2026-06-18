@@ -1,0 +1,96 @@
+{
+  "version": "3.0",
+  "cad_system": "Siemens NX 2412",
+  "description": "NX 建模工具清单 — AI 输出 JSON → journal_gen.py → C# → run_journal.exe → NX",
+  "notes": [
+    "所有工具通过 nx_modeler.cs 固定 API 调用，不猜测 NX API",
+    "AI 只需输出正确的 JSON，由系统翻译为 NX C# API"
+  ],
+  "tools": [
+    {
+      "name": "new_document",
+      "description": "创建新部件文件（每次建模必须先调用）",
+      "params": {}
+    },
+    {
+      "name": "create_sketch_on_plane",
+      "description": "在 XY 平面上创建草图",
+      "params": {},
+      "returns": {"type": "ref", "ref_type": "sketch"}
+    },
+    {
+      "name": "draw_closed_circle",
+      "description": "画圆",
+      "params": {
+        "x": {"type": "number", "description": "圆心X (mm)"},
+        "y": {"type": "number", "description": "圆心Y (mm)"},
+        "radius": {"type": "number", "description": "半径 (mm)"}
+      }
+    },
+    {
+      "name": "draw_rectangle",
+      "description": "画矩形（4条线闭合）",
+      "params": {
+        "x": {"type": "number", "description": "左下角X (mm)"},
+        "y": {"type": "number", "description": "左下角Y (mm)"},
+        "width": {"type": "number", "description": "宽度 (mm)"},
+        "height": {"type": "number", "description": "高度 (mm)"}
+      }
+    },
+    {
+      "name": "draw_line",
+      "description": "画直线",
+      "params": {
+        "x1": {"type": "number", "description": "起点X (mm)"},
+        "y1": {"type": "number", "description": "起点Y (mm)"},
+        "x2": {"type": "number", "description": "终点X (mm)"},
+        "y2": {"type": "number", "description": "终点Y (mm)"}
+      }
+    },
+    {
+      "name": "close_sketch",
+      "description": "关闭当前草图",
+      "params": {}
+    },
+    {
+      "name": "extrude",
+      "description": "拉伸草图生成实体",
+      "params": {
+        "length": {"type": "number", "description": "拉伸长度 (mm)"}
+      }
+    },
+    {
+      "name": "extrude_cut",
+      "description": "切除材料（在已有实体上挖孔/开槽）",
+      "params": {
+        "length": {"type": "number", "description": "切除深度 (mm)"}
+      }
+    },
+    {
+      "name": "revolve",
+      "description": "旋转草图生成旋转体",
+      "params": {
+        "angle": {"type": "number", "description": "旋转角度（度），默认360", "optional": true}
+      }
+    },
+    {
+      "name": "chamfer",
+      "description": "倒角（对当前实体的所有边）",
+      "params": {
+        "length": {"type": "number", "description": "倒角长度 (mm)"}
+      }
+    },
+    {
+      "name": "fillet",
+      "description": "圆角（对当前实体的所有边）",
+      "params": {
+        "radius": {"type": "number", "description": "圆角半径 (mm)"}
+      }
+    },
+    {
+      "name": "save_model",
+      "description": "保存模型为 PRT 文件",
+      "params": {}
+    }
+  ]
+}
