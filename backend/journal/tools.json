@@ -1,6 +1,5 @@
 {
-  "version": "0.1.0",
-  "build": "测试版0.1",
+  "version": "4.1",
   "cad_system": "Siemens NX 2412",
   "description": "NX 建模工具完整清单 — AI 输出 JSON → generator.py → C# → run_journal.exe → NX",
   "notes": [
