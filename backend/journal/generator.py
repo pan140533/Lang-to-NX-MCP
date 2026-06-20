@@ -28,27 +28,35 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def generate_output_name(description: str, index: int = 0) -> str:
-    """生成标准化输出名称
+    """生成标准化输出名称（仅ASCII字符，避免run_journal.exe编码问题）
 
-    格式：年_月_日_时_分_项目名称（AI自动生成）_x
-    示例：2026_06_20_15_30_三叶风扇（AI自动生成）_0
+    格式：年_月_日_时_分_简短标签_序号
+    示例：2026_06_20_12_49_3Yfan_0
 
-    Args:
-        description: 用户输入的建模描述（从中提取项目名称）
-        index: 序号，默认 0；批量建模时递增 0, 1, 2...
-
-    Returns:
-        格式化的名称字符串
+    完整中文项目名通过API返回值展示，不在文件名中带中文。
     """
     now = datetime.now()
     timestamp = now.strftime("%Y_%m_%d_%H_%M")
 
-    # 从描述中提取项目名称：去掉特殊字符，取前 20 个字符
-    project = re.sub(r'[\\/:*?"<>|]', '', description).strip()[:20]
-    if not project:
-        project = "未命名"
+    # 从描述中提取关键词做简短标签（只保留ASCII）
+    # 中文描述转拼音简写或取首字母
+    tag = _make_tag(description)
 
-    return f"{timestamp}_{project}（AI自动生成）_{index}"
+    return f"{timestamp}_{tag}_{index}"
+
+
+def _make_tag(description: str) -> str:
+    """从描述中提取ASCII标签"""
+    import hashlib
+    # 保留英文字母和数字
+    ascii_chars = [c for c in description if 32 <= ord(c) < 127]
+    if ascii_chars:
+        tag = ''.join(ascii_chars).strip().replace(' ', '_')[:16]
+        if tag:
+            return tag
+    # 纯中文：取MD4前4位
+    tag = hashlib.md5(description.encode('utf-8')).hexdigest()[:4]
+    return tag
 
 
 class JournalGenerator:
