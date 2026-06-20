@@ -1,0 +1,505 @@
+=== NXOpen.Features.EdgeBlendBuilder ===
+  Properties:
+    AllInstancesOption : Boolean
+    BlendFaceContinuity : FaceContinuity
+    BlendOrder : OrderOfBlending
+    CliffEdges : ScCollector
+    ConvexConcaveY : Boolean
+    LimitFailingAreas : Boolean
+    LimitsListData : BlendLimitsData
+    MoveSharpEdge : Boolean
+    NonCliffEdges : ScCollector
+    OverlapOption : Overlap
+    PatchComplexGeometryAreas : Boolean
+    RemoveSelfIntersection : Boolean
+    RollOntoEdge : Boolean
+    RollOverSmoothEdge : Boolean
+    SegmentBlendFaces : Boolean
+    SetbackOption : Setback
+    Tolerance : Double
+    TrimmingOption : Boolean
+    ZeroSlopeRadiusFunctionAtChainEnds : Boolean
+    ParentFeatureInternal : Boolean
+    PatchSolutionFlag : Boolean
+    PatchSurfaceFilename : String
+    SurroundingPatchSurfaceFilename : String
+    PreviewBuilder : PreviewBuilder
+    Tag : Tag
+  Methods:
+    AddVariableRadiusDataNew(Edge edge, String parameter, String radius, Point smartPoint, Boolean isExternal)
+    AddVariableRadiusDataNew(Edge edge, String parameter, String radius, Point smartPoint, Boolean isExternal, Boolean isArclength)
+    AddVariablePointData(Edge edge, String parameter, String radius, String centerValue, String rhoValue, Point smartPoint, Boolean isExternal, Boolean isArclength)
+    EditVariableRadiusData(Edge edge, Int32 vrIndex, Double parameter, String radius, Point smartPoint, Boolean isExternal)
+    EditVariableRadiusDataNew(Edge edge, Int32 vrIndex, String parameter, String radius, Point smartPoint, Boolean isExternal)
+    EditVariableRadiusDataNew(Edge edge, Int32 vrIndex, String parameter, String radius, Point smartPoint, Boolean isExternal, Boolean isArclength)
+    EditVariablePointData(Edge edge, Int32 vrIndex, String parameter, String radius, String centerValue, String rhoValue, Point smartPoint, Boolean isExternal, Boolean isArclength)
+    RemoveVariableRadiusData(Edge edge, Double parameter)
+    RemoveVariableRadiusDataByIndex(Edge edge, Int32 index)
+    RemoveVariableRadiusData(Edge edge)
+    AddEdgeChainData(Edge[] edgeArray, Boolean[] edgeAlongChainDirectionArray, Boolean isChainClosed, Boolean isChainPartOfNetwork)
+    AddPointOnEdgeChainData(Edge[] edgeArray, Double parameterOnChain, Boolean isArclength, Double radius, Double centerValue, Double rhoValue, Point smartPoint, Boolean isExternal)
+    RemoveEdgeChainAndPointOnEdgeChainData()
+    GetNumberOfValidSetbackData()
+    AddPointOnEdgeChainData(Edge[] edgeArray, String parameterOnChainExp, Boolean isArclength, String radiusExp, String centerValueExp, String rhoValueExp, Point smartPoint, Boolean isExternal)
+    GetConicExpressions(Int32 csIndex, ScCollector& collector, Expression& primaryExpressionTag, Expression& secondaryExpressionTag)
+    GetCircularVariableRadiusExpression(Edge[] edgeArray, Double parameterOnChain, Boolean isArclength, Point smartPoint, Boolean isExternal)
+    GetConicVariableRadiusExpressions(Edge[] edgeArray, Double parameterOnChain, Boolean isArclength, Point smartPoint, Boolean isExternal, Expression& primaryExpressionTag, Expression& secondaryExpressionTag)
+    GetVariableRadiusParameterExpression(Edge[] edgeArray, Double parameterOnChain, Boolean isArclength, Point smartPoint, Boolean isExternal)
+    GetSetbackDistanceExpression(Int32 sbIndex, Int32 ithDistance)
+    AddChainset(ScCollector collector, String radius)
+    AddChainset(ScCollector collector, Section sectionType, Conic conicMethod, Rhotype rhoType, String radius, String center, String rho)
+    GetChainsetIndex(ScCollector collector)
+    GetNumberOfValidChainsets()
+    GetChainset(Int32 csIndex, ScCollector& collector, Expression& radius)
+    GetChainsetAndSectionValue(Int32 csIndex, ScCollector& collector, Section& sectionType, Conic& conicMethod, Rhotype& rhoType, Expression& radius, Expression& centerValueTAG, Expression& rhoValueTAG)
+    GetChainsetAndStatus(Int32 csIndex, ScCollector& collector, Expression& radius, Boolean& isValid)
+    RemoveChainset(Int32 csIndex)
+    RemoveChainsetByCollector(ScCollector collector)
+    GetSetbackData(Int32 sbIndex, Boolean[]& fromStart, Expression[]& distanceExp)
+    AddSetbackData(Edge[] edgeArray, Boolean[] fromStart, String[] distance)
+    RemoveSetbackData(Int32 sbIndex)
+    GetNewStopshortData(Int32 ssIndex)
+    GetStopshortData(Int32 ssIndex, Edge& edge, Boolean& fromStart)
+    AddNewStopshortData(BlendStopshortBuilder builder)
+    AddStopshortData(Edge edge, Boolean fromStart, String distance)
+    RemoveStopshortData(Edge edge, Boolean fromStart)
+    RemoveStopshortDataByType(Edge edge, Boolean fromStart, Choices type)
+    RemoveNewStopshortData(BlendStopshortBuilder builder)
+    RemoveStopshortData(Int32 ssIndex)
+    GetVariableRadiusData(Edge edge, Expression[]& radiiExp, Point[]& smartPoints, Boolean[]& isExternalFlagArray)
+    GetVariableRadiusDataNew(Edge edge, Expression[]& parameterExp, Expression[]& radiiExp, Point[]& smartPoints, Boolean[]& isExternalFlagArray)
+    AddVariableRadiusData(Edge edge, Double parameter, String radius, Point smartPoint, Boolean isExternal)
+    CommitFeature()
+    GetFeature()
+    SetParentFeatureInternal(Feature parentFeature)
+    UnsetParentFeatureInternal(Feature parentFeature)
+    ShowInternalParentFeatureForEdit(Feature parentFeature)
+    HideInternalParentFeatureAfterEdit(Feature parentFeature)
+    GetPreviewBody()
+    Commit()
+    Destroy()
+    GetCommittedObjects()
+    GetObject()
+    ShowResults()
+    Validate()
+    ToString()
+    PrintTestData(String variableName)
+    PrintTestData(String variableName, Int32 lineNumber)
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+
+=== NXOpen.Features.ShellBuilder ===
+  Properties:
+    Body : Body
+    DefaultThickness : Expression
+    DefaultThicknessFlip : Boolean
+    FaceThicknessList : ObjectList
+    FaceThicknesses : ExpressionCollectorSetList
+    RemovedFacesCollector : ScCollector
+    TgtPierceOption : Boolean
+    Tolerance : Double
+    UseSurfaceApproximation : Boolean
+    ParentFeatureInternal : Boolean
+    PatchSolutionFlag : Boolean
+    PatchSurfaceFilename : String
+    SurroundingPatchSurfaceFilename : String
+    PreviewBuilder : PreviewBuilder
+    Tag : Tag
+  Methods:
+    SetDefaultThickness(String defaultThicknessValue)
+    CommitFeature()
+    GetFeature()
+    SetParentFeatureInternal(Feature parentFeature)
+    UnsetParentFeatureInternal(Feature parentFeature)
+    ShowInternalParentFeatureForEdit(Feature parentFeature)
+    HideInternalParentFeatureAfterEdit(Feature parentFeature)
+    GetPreviewBody()
+    Commit()
+    Destroy()
+    GetCommittedObjects()
+    GetObject()
+    ShowResults()
+    Validate()
+    ToString()
+    PrintTestData(String variableName)
+    PrintTestData(String variableName, Int32 lineNumber)
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+
+=== NXOpen.Features.PatternFeatureBuilder ===
+  Properties:
+    CreateReferencePattern : Boolean
+    ExpressionOption : ExpressionTransferOptions
+    FeatureList : SelectFeatureList
+    OutputOption : OutputOptions
+    PatternMethod : PatternMethodOptions
+    PatternService : PatternDefinition
+    ReferencePoint : Point
+    ReferencePointService : PatternReferencePointServiceBuilder
+    UseInferredReferencePoint : Boolean
+    ParentFeatureInternal : Boolean
+    PatchSolutionFlag : Boolean
+    PatchSurfaceFilename : String
+    SurroundingPatchSurfaceFilename : String
+    PreviewBuilder : PreviewBuilder
+    Tag : Tag
+  Methods:
+    SetReferencesToReuse(Feature inputFeature, NXObject[] referencesFromInputFeatures)
+    ClearReferencesToReuse()
+    RemoveAllClocking()
+    CommitFeature()
+    GetFeature()
+    SetParentFeatureInternal(Feature parentFeature)
+    UnsetParentFeatureInternal(Feature parentFeature)
+    ShowInternalParentFeatureForEdit(Feature parentFeature)
+    HideInternalParentFeatureAfterEdit(Feature parentFeature)
+    GetPreviewBody()
+    Commit()
+    Destroy()
+    GetCommittedObjects()
+    GetObject()
+    ShowResults()
+    Validate()
+    ToString()
+    PrintTestData(String variableName)
+    PrintTestData(String variableName, Int32 lineNumber)
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+
+=== NXOpen.Features.MoveObjectBuilder ===
+  Properties:
+    Associative : Boolean
+    CreateTraceLines : Boolean
+    Divisions : Int32
+    Layer : Int32
+    LayerOption : LayerOptionType
+    MoveObjectResult : MoveObjectResultOptions
+    MoveParents : Boolean
+    NumberOfCopies : Int32
+    ObjectToMoveObject : SelectNXObjectList
+    PreMultiplicationTransform : Matrix4x4
+    TransformMotion : ModlMotion
+    PreviewBuilder : PreviewBuilder
+    Tag : Tag
+  Methods:
+    Commit()
+    Destroy()
+    GetCommittedObjects()
+    GetObject()
+    ShowResults()
+    Validate()
+    ToString()
+    PrintTestData(String variableName)
+    PrintTestData(String variableName, Int32 lineNumber)
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+
+=== NXOpen.Features.SweptBuilder1 ===
+  Properties:
+    AlignmentMethod : AlignmentMethodBuilder1
+    BodyPreference : FeatureOptions
+    G0Tolerance : Double
+    G1Tolerance : Double
+    GuideList : SectionList
+    GuideRebuildData : Rebuild
+    InterpolationOption : InterpolationOptions
+    OrientationMethod : OrientationMethodBuilder
+    PreserveGuideShapeOption : Boolean
+    PreserveShapeOption : Boolean
+    ScalingMethod : ScalingMethodBuilder
+    SectionList : SectionList
+    SectionLocation : SectionLocationTypes
+    SectionRebuildData : Rebuild
+    Spine : Section
+    ParentFeatureInternal : Boolean
+    PatchSolutionFlag : Boolean
+    PatchSurfaceFilename : String
+    SurroundingPatchSurfaceFilename : String
+    PreviewBuilder : PreviewBuilder
+    Tag : Tag
+  Methods:
+    CommitFeature()
+    GetFeature()
+    SetParentFeatureInternal(Feature parentFeature)
+    UnsetParentFeatureInternal(Feature parentFeature)
+    ShowInternalParentFeatureForEdit(Feature parentFeature)
+    HideInternalParentFeatureAfterEdit(Feature parentFeature)
+    GetPreviewBody()
+    Commit()
+    Destroy()
+    GetCommittedObjects()
+    GetObject()
+    ShowResults()
+    Validate()
+    ToString()
+    PrintTestData(String variableName)
+    PrintTestData(String variableName, Int32 lineNumber)
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+
+=== NXOpen.GeometricUtilities.RectangularPattern ===
+  Properties:
+    CreateLastStaggered : Boolean
+    HorizontalRef : HorizontalReference
+    SimplifiedLayoutType : SimplifiedLayoutTypes
+    StaggerType : StaggerOptions
+    UseYDirectionToggle : Boolean
+    XDirection : Direction
+    XFlip : Boolean
+    XSelection : SelectNXObject
+    XSpacing : DistancePatternSpacing
+    XSymmetryToggle : Boolean
+    YDirection : Direction
+    YFlip : Boolean
+    YSelection : SelectNXObject
+    YSpacing : DistancePatternSpacing
+    YSymmetryToggle : Boolean
+    Tag : Tag
+  Methods:
+    Validate()
+    ToString()
+    PrintTestData(String variableName)
+    PrintTestData(String variableName, Int32 lineNumber)
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+
+=== NXOpen.GeometricUtilities.CircularPattern ===
+  Properties:
+    AngularSpacing : AngularPatternSpacing
+    CenterPoint : SelectNXObject
+    CreateLastStaggered : Boolean
+    Flip : Boolean
+    HorizontalRef : HorizontalReference
+    IncludeSeedToggle : Boolean
+    RadialSpacing : DistancePatternSpacing
+    RotationAxis : Axis
+    RotationCenter : Point
+    StaggerType : StaggerOptions
+    UseRadialDirectionToggle : Boolean
+    Tag : Tag
+  Methods:
+    Validate()
+    ToString()
+    PrintTestData(String variableName)
+    PrintTestData(String variableName, Int32 lineNumber)
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+
+=== NXOpen.GeometricUtilities.ModlMotion ===
+  Properties:
+    AlignVector : Axis
+    AlongCurveAngle : ModlAlongCurveAngle
+    Angle : Expression
+    AngularAxis : Axis
+    DeltaEnum : Delta
+    DeltaX : Double
+    DeltaXc : Expression
+    DeltaY : Double
+    DeltaYc : Expression
+    DeltaZ : Double
+    DeltaZc : Expression
+    DistanceAngle : ModlDistanceAngle
+    DistanceBetweenPointsDistance : Expression
+    DistanceBetweenPointsMeasurePoint : Point
+    DistanceBetweenPointsOriginDistance : Expression
+    DistanceBetweenPointsOriginPoint : Point
+    DistanceBetweenPointsVector : Direction
+    DistanceValue : Expression
+    DistanceVector : Direction
+    EndPoint : Point
+    FromCsys : CoordinateSystem
+    FromPoint : Point
+    ManipulatorMatrix : Matrix3x3
+    ManipulatorOrigin : Point3d
+    MoveHandle : Boolean
+    Option : Options
+    OrientXpress : OrientXpressBuilder
+    RadialAxis : Axis
+    RadialDistance : Expression
+    RadialMeasurePoint : Point
+    RadialOriginDistance : Expression
+    RotateVector : Axis
+    StartPoint : Point
+    TempManipulatorOrigin : Point3d
+    ToCsys : CoordinateSystem
+    ToPoint : Point
+    ToVector : Direction
+    Tag : Tag
+  Methods:
+    Validate()
+    SetMotionToTwoDimensions(Plane plane)
+    SetDependentView(View view)
+    ResetMotionToThreeDimensions()
+    SetUpdateOption(UpdateOption option)
+    GetTransformation(Double[]& transformation)
+    SetFromPointSelectionObjects(TaggedObject[] selectedObjects)
+    SetToPointSelectionObjects(TaggedObject[] selectedObjects)
+    ToString()
+    PrintTestData(String variableName)
+    PrintTestData(String variableName, Int32 lineNumber)
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+
+=== NXOpen.GeometricUtilities.PatternDefinition ===
+  Properties:
+    AlongPathDefinition : AlongPathPattern
+    AxialDefinition : AxialPattern
+    CircularDefinition : CircularPattern
+    FrameOnlyToggle : Boolean
+    GeneralDefinition : GeneralPattern
+    HelixDefinition : HelixPattern
+    MirrorDefinition : MirrorPattern
+    PatternFill : PatternFill
+    PatternIncrementsBuilder : PatternIncrementsBuilder
+    PatternOrientation : PatternOrientation
+    PatternType : PatternEnum
+    PolygonDefinition : PolygonPattern
+    RectangularDefinition : RectangularPattern
+    ReferenceDefinition : ReferencePattern
+    SeedOnlyToggle : Boolean
+    SpiralDefinition : SpiralPattern
+    Tag : Tag
+  Methods:
+    Validate()
+    CreatePatternInstanceEditBuilder()
+    GetSuppressState(Int32 index1, Int32 index2)
+    SetSuppressState(Int32 index1, Int32 index2, Boolean suppressState)
+    GetDeleteState(Int32 index1, Int32 index2)
+    SetDeleteState(Int32 index1, Int32 index2, Boolean deleteState)
+    CreateClockingBuilder(Int32 ix, Int32 iy)
+    GetClocking(Int32 index1, Int32 index2)
+    RemoveClocking(Int32 index1, Int32 index2)
+    RemoveVariance(Int32 index1, Int32 index2)
+    SetSpreadsheetData(Double[] spreadsheetTableArray, Double[] locationTableArray, Boolean[] defaultTableArray)
+    ToString()
+    PrintTestData(String variableName)
+    PrintTestData(String variableName, Int32 lineNumber)
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+
+=== NXOpen.GeometricUtilities.DistancePatternSpacing ===
+  Properties:
+    PitchDistance : Expression
+    SpanDistance : Expression
+    NCopies : Expression
+    Points : Section
+    SpaceType : SpacingType
+    SpacingsList : PatternSpacingsList
+    Tag : Tag
+  Methods:
+    Validate()
+    ToString()
+    PrintTestData(String variableName)
+    PrintTestData(String variableName, Int32 lineNumber)
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+
+=== NXOpen.GeometricUtilities.AngularPatternSpacing ===
+  Properties:
+    PitchAngle : Expression
+    PitchDistance : Expression
+    SpanAngle : Expression
+    UsePitchOption : UsePitchOptions
+    NCopies : Expression
+    Points : Section
+    SpaceType : SpacingType
+    SpacingsList : PatternSpacingsList
+    Tag : Tag
+  Methods:
+    Validate()
+    ToString()
+    PrintTestData(String variableName)
+    PrintTestData(String variableName, Int32 lineNumber)
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+
+=== NXOpen.CurveCollection ===
+  Properties:
+    Tag : Tag
+  Methods:
+    ToArray()
+    CreateLine(Point3d startPoint, Point3d endPoint)
+    CreateLine(Point startPoint, Point endPoint)
+    CreateInfiniteLine(Point3d startPoint, Point3d endPoint)
+    CreatePairedInfiniteLine(Line line)
+    CreateArc(Point3d startPoint, Point3d pointOn, Point3d endPoint, Boolean alternateSolution, Boolean& startAndEndGotFlipped)
+    CreateArc(Point3d center, NXMatrix matrix, Double radius, Double startAngle, Double endAngle)
+    CreateArc(Point3d center, Vector3d xDirection, Vector3d yDirection, Double radius, Double startAngle, Double endAngle)
+    CreateEllipse(Point3d center, Double majorRadius, Double minorRadius, Double startAngle, Double endAngle, Double rotationAngle, NXMatrix matrix)
+    CreateEllipse(Point3d center, Vector3d xDirection, Vector3d yDirection, Double majorRadius, Double minorRadius, Double startAngle, Double endAngle)
+    CreateParabola(Point3d center, Double focalLength, Double minimumDY, Double maximumDY, Double rotationAngle, NXMatrix matrix)
+    CreateParabola(Point3d center, Vector3d xDirection, Vector3d yDirection, Double focalLength, Double minimumDY, Double maximumDY)
+    CreateHyperbola(Point3d center, Double semiTransverseLength, Double semiConjugateLength, Double minimumDY, Double maximumDY, Double rotationAngle, NXMatrix matrix)
+    CreateHyperbola(Point3d center, Vector3d xDirection, Vector3d yDirection, Double semiTransverseLength, Double semiConjugateLength, Double minimumDY, Double maximumDY)
+    CreateVirtualBlendCurve(UpdateOption updateOption, IParameterizedSurface blendFace, Double tolerance)
+    CreateVirtualCenterlineCurve(UpdateOption updateOption, IParameterizedSurface blendFace, Double tolerance)
+    CreateSmartCompositeCurve(Section section, UpdateOption updateOption, Double tolerance)
+    CreateSmartCompositeCurve(Curve curve, UpdateOption updateOption)
+    CreateExtractedCurve(ICurve curveToExtract, Int32 type, Int32 subtype, Xform xform, Double tolerance, UpdateOption updateOption)
+    GetEnumerator()
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+    ToString()
+
+=== NXOpen.SectionList ===
+  Properties:
+    Length : Int32
+    Tag : Tag
+  Methods:
+    Append(Section[] objects)
+    Append(Section object)
+    ClearIndex(Int32 deleteIdx)
+    FindIndex(Section obj)
+    FindItem(Int32 index)
+    Erase(Int32 index)
+    Erase(Int32 index, DeleteOption deleteOption)
+    Erase(Section obj)
+    Erase(Section obj, DeleteOption deleteOption)
+    Clear()
+    Clear(DeleteOption deleteOption)
+    GetContents()
+    SetContents(Section[] objects)
+    Swap(Int32 index1, Int32 index2)
+    Swap(Section object1, Section object2)
+    Insert(Int32 location, Section object)
+    MoveToTop(Int32 index)
+    MoveToBottom(Int32 index)
+    ToString()
+    PrintTestData(String variableName)
+    PrintTestData(String variableName, Int32 lineNumber)
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+
+=== NXOpen.Features.BaseFeatureCollection ===
+  Properties:
+    Tag : Tag
+  Methods:
+    ToArray()
+    CreateTrimCornerBuilder(Feature trimCorner)
+    CreateDivideCurveBuilder(Feature divideCurve)
+    CreateAssociativeLineBuilder(AssociativeLine associativeLine)
+    CreateAssociativeLineBuilder(Line nonAssociativeLine)
+    CreateAssociativeArcBuilder(AssociativeArc associativeArc)
+    CreateAssociativeArcBuilder(Arc nonAssociativeArc)
+    CreatePointFeatureBuilder(Feature point)
+    CreateWaveLinkBuilder(Feature wavelink)
+    CreateWaveInterfaceLinkerBuilder(Feature waveInterfaceLinker)
+    CreateMoveObjectBuilder(MoveObject moveObject)
+    GetEnumerator()
+    Equals(Object obj)
+    GetHashCode()
+    GetType()
+    ToString()

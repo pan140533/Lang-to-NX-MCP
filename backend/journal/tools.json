@@ -1,11 +1,13 @@
 {
-  "version": "4.0",
+  "version": "4.1",
   "cad_system": "Siemens NX 2412",
   "description": "NX 建模工具完整清单 — AI 输出 JSON → generator.py → C# → run_journal.exe → NX",
   "notes": [
     "所有工具通过 nx_modeler.cs 固定 API 调用，不猜测 NX API",
     "AI 只需输出正确的 JSON，由系统翻译为 NX C# API",
-    "工具按建模流程分类：文档 → 草图 → 绘图 → 建模 → 修饰 → 高级"
+    "工具按建模流程分类：文档 → 草图 → 绘图 → 建模 → 修饰 → 高级",
+    "v4.1: 实现布尔运算(Unite/Subtract/Intersect)、线性阵列、镜像、边倒圆、变换(平移/旋转)、抽壳、圆环体",
+    "TODOs: 扫掠(SweptBuilder1)、曲面类(9个)、同步建模(4个)、螺纹、缩放、测量(3个)"
   ],
   "tools": [
     // ═══════════════════════════════════════════════════════════

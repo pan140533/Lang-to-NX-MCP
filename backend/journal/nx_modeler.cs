@@ -11,6 +11,7 @@ public class NXModeler
   public List<ICurve> curCurves = new List<ICurve>();
   public string outPath = "./output/models";
   private Feature _lastFeature = null;  // 追踪最后创建的特征（用于阵列）
+  private Body _previousBody = null;    // 追踪上一个体（用于布尔操作）
 
   public void Init()
   { ses = Session.GetSession(); wp = ses.Parts.Work; dp = ses.Parts.Display; }
@@ -101,7 +102,7 @@ public class NXModeler
     eb.AllowSelfIntersectingSection(true);
     Feature f = eb.CommitFeature(); eb.Destroy();
     _lastFeature = f;
-    if (f.GetBodies().Length > 0) curBody = f.GetBodies()[0];
+    if (f.GetBodies().Length > 0) { _previousBody = curBody; curBody = f.GetBodies()[0]; }
   }
 
   public void Tool_ExtrudeCut(double len)
@@ -158,7 +159,7 @@ public class NXModeler
     rb.BooleanOperation.Type = BooleanOperation.BooleanType.Create;
     rb.Limits.StartExtend.Value.SetFormula("0"); rb.Limits.EndExtend.Value.SetFormula(angle.ToString());
     Feature fr = rb.CommitFeature(); rb.Destroy();
-    try { NXObject[] objs = fr.GetEntities(); if (objs != null) foreach (NXObject o in objs) { Body b = o as Body; if (b != null) { curBody = b; break; } } } catch { }
+    try { NXObject[] objs = fr.GetEntities(); if (objs != null) foreach (NXObject o in objs) { Body b = o as Body; if (b != null) { _previousBody = curBody; curBody = b; break; } } } catch { }
   }
 
   public void Tool_Chamfer(double len)
@@ -176,10 +177,22 @@ public class NXModeler
   public void Tool_Fillet(double rad)
   {
     if (curBody == null) return;
-    var fb = wp.Features.CreateEdgeBlendBuilder(null);
-    var coll = wp.ScCollectors.CreateCollector();
-    coll.ReplaceRules(new SelectionIntentRule[]{wp.ScRuleFactory.CreateRuleEdgeDumb(curBody.GetEdges())}, false);
-    fb.CommitFeature(); fb.Destroy();
+    try
+    {
+      var fb = wp.Features.CreateEdgeBlendBuilder(null);
+      var coll = wp.ScCollectors.CreateCollector();
+      coll.ReplaceRules(new SelectionIntentRule[]{wp.ScRuleFactory.CreateRuleEdgeDumb(curBody.GetEdges())}, false);
+      fb.NonCliffEdges = coll;
+      fb.AddChainset(coll, rad.ToString());
+      Feature f = fb.CommitFeature();
+      fb.Destroy();
+      _lastFeature = f;
+      Console.WriteLine("[OK] Fillet: radius={0}", rad);
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine("[!] Fillet failed: {0}", ex.Message);
+    }
   }
 
   public void Tool_Cone(double r, double h)
@@ -291,19 +304,53 @@ public class NXModeler
 
   public void Tool_Torus(double majorR, double minorR)
   {
-    // TODO: 圆环体（需要 NXOpen Tube/Sweep API）
-    Console.WriteLine("[TODO] Tool_Torus: major={0}, minor={1}", majorR, minorR);
-    // 简易逼近：用多层圆环近似（精度有限）
-    int steps = 36;
-    for (int i = 0; i < steps; i++)
+    try
     {
-      double angle = 2.0 * Math.PI * i / steps;
-      double cx = majorR * Math.Cos(angle);
-      double cy = majorR * Math.Sin(angle);
-      Tool_CreateSketch();
-      Tool_DrawCircle(cx, cy, minorR);
-      Tool_CloseSketch();
-      Tool_ExtrudeFrom(-1, 2);
+      // Create a circular guide curve in XY plane
+      NXMatrix mx = null;
+      Arc guideArc = null;
+      try { mx = ses.ActiveSketch.Orientation; } catch { }
+      if (mx == null)
+        guideArc = wp.Curves.CreateArc(new Point3d(0, 0, 0),
+            new Vector3d(1, 0, 0), new Vector3d(0, 1, 0),
+            majorR, 0.0, 2.0 * Math.PI);
+      else
+        guideArc = wp.Curves.CreateArc(new Point3d(0, 0, 0), mx,
+            majorR, 0.0, 2.0 * Math.PI);
+
+      TubeBuilder tb = wp.Features.CreateTubeBuilder(null);
+      Section guideSec = wp.Sections.CreateSection(0.0095, 0.01, 0.5);
+      guideSec.SetAllowedEntityTypes(Section.AllowTypes.OnlyCurves);
+      SelectionIntentRuleOptions ro = wp.ScRuleFactory.CreateRuleOptions();
+      ro.SetSelectedFromInactive(false);
+      CurveDumbRule cr = wp.ScRuleFactory.CreateRuleCurveDumb(new Curve[]{guideArc});
+      guideSec.AddToSection(new SelectionIntentRule[]{cr}, guideArc, null, null,
+          new Point3d(majorR, 0, 0), Section.Mode.Create, false);
+      ro.Dispose();
+      tb.OuterDiameter.RightHandSide = (minorR * 2.0).ToString();
+
+      Feature f = tb.CommitFeature();
+      tb.Destroy();
+      _lastFeature = f;
+      if (f.GetBodies().Length > 0) { _previousBody = curBody; curBody = f.GetBodies()[0]; }
+      Console.WriteLine("[OK] Torus: major={0}, minor={1}", majorR, minorR);
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine("[!] Torus failed: {0}", ex.Message);
+      // Fallback: sketch + revolve approach
+      try
+      {
+        Tool_CreateSketch();
+        Tool_DrawCircle(majorR, 0, minorR);
+        Tool_CloseSketch();
+        Tool_Revolve(360);
+        Console.WriteLine("[OK] Torus (fallback via revolve): major={0}, minor={1}", majorR, minorR);
+      }
+      catch (Exception ex2)
+      {
+        Console.WriteLine("[!] Torus fallback also failed: {0}", ex2.Message);
+      }
     }
   }
 
@@ -313,8 +360,9 @@ public class NXModeler
 
   public void Tool_Sweep(Point3d[] pathPoints)
   {
-    // TODO: 扫掠（需要 NXOpen SweepBuilder API）
-    Console.WriteLine("[TODO] Tool_Sweep: {0} path points", pathPoints.Length);
+    // TODO: 扫掠（NX2412 需用 FreeformSurfaceCollection.CreateSweptBuilder1）
+    Console.WriteLine("[TODO] Tool_Sweep: {0} path points",
+        pathPoints != null ? pathPoints.Length : 0);
   }
 
   public void Tool_Loft(string[] sectionRefs)
@@ -329,21 +377,92 @@ public class NXModeler
 
   public void Tool_BooleanUnite(string targetRef, string toolRef)
   {
-    // TODO: 布尔合并（需要 NXOpen BooleanBuilder API）
-    Console.WriteLine("[TODO] Tool_BooleanUnite: target={0}, tool={1}", targetRef, toolRef);
-    // 当前策略：自动合并（extrude 时 curBody 自动成为后续操作的目标体）
+    Body targetBody = curBody;
+    Body toolBody = _previousBody;
+    if (targetBody == null || toolBody == null)
+    {
+      Console.WriteLine("[!] BooleanUnite: need two bodies (curBody and _previousBody)");
+      return;
+    }
+    try
+    {
+      BooleanBuilder bb = wp.Features.CreateBooleanBuilder(null);
+      bb.Operation = Feature.BooleanType.Unite;
+      bb.Target = targetBody;
+      ScCollector coll = wp.ScCollectors.CreateCollector();
+      coll.ReplaceRules(new SelectionIntentRule[]{wp.ScRuleFactory.CreateRuleBodyDumb(new Body[]{toolBody})}, false);
+      bb.ToolBodyCollector = coll;
+      Feature f = bb.CommitFeature();
+      bb.Destroy();
+      _lastFeature = f;
+      if (f.GetBodies().Length > 0) curBody = f.GetBodies()[0];
+      _previousBody = null;
+      Console.WriteLine("[OK] BooleanUnite");
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine("[!] BooleanUnite failed: {0}", ex.Message);
+    }
   }
 
   public void Tool_BooleanSubtract(string targetRef, string toolRef)
   {
-    // TODO: 布尔减去（需要 NXOpen BooleanBuilder API）
-    Console.WriteLine("[TODO] Tool_BooleanSubtract: target={0}, tool={1}", targetRef, toolRef);
+    Body targetBody = _previousBody;
+    Body toolBody = curBody;
+    if (targetBody == null || toolBody == null)
+    {
+      Console.WriteLine("[!] BooleanSubtract: need two bodies");
+      return;
+    }
+    try
+    {
+      BooleanBuilder bb = wp.Features.CreateBooleanBuilder(null);
+      bb.Operation = Feature.BooleanType.Subtract;
+      bb.Target = targetBody;
+      ScCollector coll = wp.ScCollectors.CreateCollector();
+      coll.ReplaceRules(new SelectionIntentRule[]{wp.ScRuleFactory.CreateRuleBodyDumb(new Body[]{toolBody})}, false);
+      bb.ToolBodyCollector = coll;
+      Feature f = bb.CommitFeature();
+      bb.Destroy();
+      _lastFeature = f;
+      if (f.GetBodies().Length > 0) curBody = f.GetBodies()[0];
+      _previousBody = null;
+      Console.WriteLine("[OK] BooleanSubtract");
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine("[!] BooleanSubtract failed: {0}", ex.Message);
+    }
   }
 
   public void Tool_BooleanIntersect(string targetRef, string toolRef)
   {
-    // TODO: 布尔相交（需要 NXOpen BooleanBuilder API）
-    Console.WriteLine("[TODO] Tool_BooleanIntersect: target={0}, tool={1}", targetRef, toolRef);
+    Body targetBody = curBody;
+    Body toolBody = _previousBody;
+    if (targetBody == null || toolBody == null)
+    {
+      Console.WriteLine("[!] BooleanIntersect: need two bodies");
+      return;
+    }
+    try
+    {
+      BooleanBuilder bb = wp.Features.CreateBooleanBuilder(null);
+      bb.Operation = Feature.BooleanType.Intersect;
+      bb.Target = targetBody;
+      ScCollector coll = wp.ScCollectors.CreateCollector();
+      coll.ReplaceRules(new SelectionIntentRule[]{wp.ScRuleFactory.CreateRuleBodyDumb(new Body[]{toolBody})}, false);
+      bb.ToolBodyCollector = coll;
+      Feature f = bb.CommitFeature();
+      bb.Destroy();
+      _lastFeature = f;
+      if (f.GetBodies().Length > 0) curBody = f.GetBodies()[0];
+      _previousBody = null;
+      Console.WriteLine("[OK] BooleanIntersect");
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine("[!] BooleanIntersect failed: {0}", ex.Message);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -352,16 +471,78 @@ public class NXModeler
 
   public void Tool_EdgeBlend(double radius, int[] edgeIndices)
   {
-    // TODO: 指定边圆角（需要 NXOpen EdgeBlendBuilder + 边选择 API）
-    Console.WriteLine("[TODO] Tool_EdgeBlend: radius={0}, edges=[{1}]", radius, string.Join(",", edgeIndices));
-    // 回退：对所有边圆角
-    Tool_Fillet(radius);
+    if (curBody == null)
+    {
+      Console.WriteLine("[!] EdgeBlend: no curBody");
+      return;
+    }
+    try
+    {
+      EdgeBlendBuilder eb = wp.Features.CreateEdgeBlendBuilder(null);
+
+      Edge[] allEdges = curBody.GetEdges();
+      ScCollector coll = wp.ScCollectors.CreateCollector();
+      if (edgeIndices != null && edgeIndices.Length > 0)
+      {
+        List<Edge> selEdges = new List<Edge>();
+        foreach (int idx in edgeIndices)
+          if (idx >= 0 && idx < allEdges.Length) selEdges.Add(allEdges[idx]);
+        coll.ReplaceRules(new SelectionIntentRule[]{
+            wp.ScRuleFactory.CreateRuleEdgeDumb(selEdges.ToArray())}, false);
+      }
+      else
+      {
+        coll.ReplaceRules(new SelectionIntentRule[]{
+            wp.ScRuleFactory.CreateRuleEdgeDumb(allEdges)}, false);
+      }
+      eb.NonCliffEdges = coll;
+      eb.AddChainset(coll, radius.ToString());
+
+      Feature f = eb.CommitFeature();
+      eb.Destroy();
+      _lastFeature = f;
+      Console.WriteLine("[OK] EdgeBlend: radius={0}, edges={1}",
+          radius, edgeIndices != null ? edgeIndices.Length : 0);
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine("[!] EdgeBlend failed: {0}", ex.Message);
+    }
   }
 
   public void Tool_Shell(double thickness, int removeFaceIndex)
   {
-    // TODO: 抽壳（需要 NXOpen ShellBuilder API）
-    Console.WriteLine("[TODO] Tool_Shell: thickness={0}, remove_face={1}", thickness, removeFaceIndex);
+    if (curBody == null)
+    {
+      Console.WriteLine("[!] Shell: no curBody");
+      return;
+    }
+    try
+    {
+      ShellBuilder sb = wp.Features.CreateShellBuilder(null);
+      sb.Body = curBody;
+      sb.DefaultThickness.RightHandSide = thickness.ToString();
+      sb.Tolerance = 0.1;
+
+      Face[] faces = curBody.GetFaces();
+      if (removeFaceIndex >= 0 && removeFaceIndex < faces.Length)
+      {
+        ScCollector faceColl = wp.ScCollectors.CreateCollector();
+        faceColl.ReplaceRules(new SelectionIntentRule[]{
+            wp.ScRuleFactory.CreateRuleFaceDumb(new Face[]{faces[removeFaceIndex]})}, false);
+        sb.RemovedFacesCollector = faceColl;
+      }
+      // else: shell entire body without removing faces
+
+      Feature f = sb.CommitFeature();
+      sb.Destroy();
+      _lastFeature = f;
+      Console.WriteLine("[OK] Shell: thickness={0}, remove_face={1}", thickness, removeFaceIndex);
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine("[!] Shell failed: {0}", ex.Message);
+    }
   }
 
   public void Tool_Hole(double x, double y, double diameter, double depth, string holeType)
@@ -432,8 +613,42 @@ public class NXModeler
 
   public void Tool_PatternLinear(string featureRef, int countX, double spacingX, int countY, double spacingY)
   {
-    // TODO: 线性阵列（需要 NXOpen PatternFeatureBuilder API）
-    Console.WriteLine("[TODO] Tool_PatternLinear: ref={0}, x={1}@{2}, y={3}@{4}", featureRef, countX, spacingX, countY, spacingY);
+    if (_lastFeature == null)
+    {
+      Console.WriteLine("[!] PatternLinear: no feature to pattern");
+      return;
+    }
+
+    try
+    {
+      var builder = wp.Features.CreatePatternFeatureBuilder(null);
+      builder.FeatureList.Add(_lastFeature);
+
+      var patternDef = builder.PatternService;
+      patternDef.PatternType = PatternDefinition.PatternEnum.Linear;
+
+      var rectDef = patternDef.RectangularDefinition;
+      rectDef.XSpacing.NCopies.RightHandSide = countX.ToString();
+      rectDef.XSpacing.PitchDistance.RightHandSide = spacingX.ToString();
+      rectDef.XDirection = wp.Directions.CreateDirection(
+          new Point3d(0, 0, 0), new Vector3d(1, 0, 0), SmartObject.UpdateOption.WithinModeling);
+      if (countY > 1)
+      {
+        rectDef.YSpacing.NCopies.RightHandSide = countY.ToString();
+        rectDef.YSpacing.PitchDistance.RightHandSide = spacingY.ToString();
+        rectDef.YDirection = wp.Directions.CreateDirection(
+            new Point3d(0, 0, 0), new Vector3d(0, 1, 0), SmartObject.UpdateOption.WithinModeling);
+        rectDef.UseYDirectionToggle = true;
+      }
+
+      var result = builder.CommitFeature();
+      builder.Destroy();
+      Console.WriteLine("[OK] LinearPattern: {0} x {1} (dx={2}, dy={3})", countX, countY, spacingX, spacingY);
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine("[!] LinearPattern failed: {0}", ex.Message);
+    }
   }
 
   public void Tool_PatternCircular(string featureRef, int count, double angle)
@@ -447,21 +662,23 @@ public class NXModeler
     try
     {
       var builder = wp.Features.CreatePatternFeatureBuilder(null);
-      builder.PatternFeatureInput.FeatureList.Add(_lastFeature);
+      builder.FeatureList.Add(_lastFeature);
 
       // 设置为圆形阵列
-      var patternDef = builder.PatternFeatureInput.PatternDefinition;
-      patternDef.PatternType = PatternDefinition.PatternTypeEnum.Circular;
+      var patternDef = builder.PatternService;
+      patternDef.PatternType = PatternDefinition.PatternEnum.Circular;
 
       // 设置数量和角度
       var circularDef = patternDef.CircularDefinition;
-      circularDef.Count.RightHandSide = count.ToString();
-      circularDef.PitchAngle.RightHandSide = angle.ToString();
+      circularDef.AngularSpacing.NCopies.RightHandSide = count.ToString();
+      circularDef.AngularSpacing.PitchAngle.RightHandSide = angle.ToString();
 
-      // 旋转轴：Z 轴，经过原点
+      // 旋转中心：原点
+      circularDef.RotationCenter = wp.Points.CreatePoint(new Point3d(0, 0, 0));
+      // 旋转轴：Z 轴
       Point3d origin = new Point3d(0, 0, 0);
       Vector3d zDir = new Vector3d(0, 0, 1);
-      circularDef.Axis = wp.Axes.CreateAxis(origin, zDir, SmartObject.UpdateOption.WithinModeling);
+      circularDef.RotationAxis = wp.Axes.CreateAxis(origin, zDir, SmartObject.UpdateOption.WithinModeling);
 
       var result = builder.CommitFeature();
       builder.Destroy();
@@ -475,8 +692,46 @@ public class NXModeler
 
   public void Tool_MirrorFeature(string featureRef, string mirrorPlane)
   {
-    // TODO: 镜像特征（需要 NXOpen MirrorFeatureBuilder API）
-    Console.WriteLine("[TODO] Tool_MirrorFeature: ref={0}, plane={1}", featureRef, mirrorPlane);
+    if (_lastFeature == null)
+    {
+      Console.WriteLine("[!] MirrorFeature: no feature to mirror");
+      return;
+    }
+
+    try
+    {
+      MirrorFeatureBuilder mb = wp.Features.CreateMirrorFeatureBuilder(null);
+      mb.FeatureSet.Add(_lastFeature);
+
+      // Determine mirror plane based on string
+      Plane mirrorPlaneObj = null;
+      string plane = (mirrorPlane ?? "YZ").ToUpper();
+      if (plane == "XY")
+        mirrorPlaneObj = wp.Planes.CreatePlane(
+            new Point3d(0, 0, 0), new Vector3d(0, 0, 1), SmartObject.UpdateOption.WithinModeling);
+      else if (plane == "YZ")
+        mirrorPlaneObj = wp.Planes.CreatePlane(
+            new Point3d(0, 0, 0), new Vector3d(1, 0, 0), SmartObject.UpdateOption.WithinModeling);
+      else if (plane == "XZ")
+        mirrorPlaneObj = wp.Planes.CreatePlane(
+            new Point3d(0, 0, 0), new Vector3d(0, 1, 0), SmartObject.UpdateOption.WithinModeling);
+      else
+      {
+        Console.WriteLine("[!] MirrorFeature: unknown plane '{0}', using YZ", mirrorPlane);
+        mirrorPlaneObj = wp.Planes.CreatePlane(
+            new Point3d(0, 0, 0), new Vector3d(1, 0, 0), SmartObject.UpdateOption.WithinModeling);
+      }
+      mb.PlaneConstructor = mirrorPlaneObj;
+
+      Feature f = mb.CommitFeature();
+      mb.Destroy();
+      _lastFeature = f;
+      Console.WriteLine("[OK] MirrorFeature: plane={0}", plane);
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine("[!] MirrorFeature failed: {0}", ex.Message);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -571,14 +826,63 @@ public class NXModeler
 
   public void Tool_Translate(double dx, double dy, double dz)
   {
-    // TODO: 平移（需要 NXOpen MoveObjectBuilder API）
-    Console.WriteLine("[TODO] Tool_Translate: dx={0}, dy={1}, dz={2}", dx, dy, dz);
+    if (curBody == null)
+    {
+      Console.WriteLine("[!] Translate: no curBody");
+      return;
+    }
+    try
+    {
+      MoveObjectBuilder mb = wp.BaseFeatures.CreateMoveObjectBuilder(null);
+      mb.ObjectToMoveObject.Add(curBody);
+      mb.TransformMotion.Option = ModlMotion.Options.DistanceAngle;
+      mb.TransformMotion.DistanceValue.RightHandSide =
+          Math.Sqrt(dx*dx + dy*dy + dz*dz).ToString();
+      mb.TransformMotion.DistanceVector = wp.Directions.CreateDirection(
+          new Point3d(0, 0, 0), new Vector3d(dx, dy, dz),
+          SmartObject.UpdateOption.WithinModeling);
+
+      NXObject obj = mb.Commit();
+      mb.Destroy();
+      Console.WriteLine("[OK] Translate: dx={0}, dy={1}, dz={2}", dx, dy, dz);
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine("[!] Translate failed: {0}", ex.Message);
+    }
   }
 
   public void Tool_Rotate(double angle, string axis)
   {
-    // TODO: 旋转（需要 NXOpen MoveObjectBuilder API）
-    Console.WriteLine("[TODO] Tool_Rotate: angle={0}, axis={1}", angle, axis);
+    if (curBody == null)
+    {
+      Console.WriteLine("[!] Rotate: no curBody");
+      return;
+    }
+    try
+    {
+      MoveObjectBuilder mb = wp.BaseFeatures.CreateMoveObjectBuilder(null);
+      mb.ObjectToMoveObject.Add(curBody);
+      mb.TransformMotion.Option = ModlMotion.Options.Angle;
+      mb.TransformMotion.Angle.RightHandSide = angle.ToString();
+
+      string ax = (axis ?? "Z").ToUpper();
+      Vector3d vec;
+      if (ax == "X") vec = new Vector3d(1, 0, 0);
+      else if (ax == "Y") vec = new Vector3d(0, 1, 0);
+      else vec = new Vector3d(0, 0, 1);
+
+      mb.TransformMotion.RotateVector = wp.Axes.CreateAxis(
+          new Point3d(0, 0, 0), vec, SmartObject.UpdateOption.WithinModeling);
+
+      NXObject obj = mb.Commit();
+      mb.Destroy();
+      Console.WriteLine("[OK] Rotate: angle={0}, axis={1}", angle, ax);
+    }
+    catch (Exception ex)
+    {
+      Console.WriteLine("[!] Rotate failed: {0}", ex.Message);
+    }
   }
 
   public void Tool_Scale(double factor)
