@@ -10,6 +10,7 @@ from session_manager import SessionManager, FeatureData
 from log_system import log_operation, log_error, log_task_start, log_task_end
 import config  # 导入配置文件
 from backend.journal.generator import generate_output_name
+from backend.name_mapper import save_mapping as _save_name_map
 
 app = FastAPI()
 
@@ -120,8 +121,9 @@ def execute_command(request: CommandRequest):
         # 3. 生成标准化输出名称并注入流水线
         output_name = generate_output_name(request.description)
         pipeline.current_output_name = output_name
-        # 中文项目名（用于前端展示）
-        project_name = request.description.strip()[:30] or "未命名"
+        # 中文项目名 + 保存到名称映射数据库
+        project_name = request.description.strip()[:50] or "未命名"
+        _save_name_map(output_name, project_name, request.description.strip())
 
         # 4. Agent Pipeline 处理：意图识别 → 结构分解 → 任务规划 → 代码生成 → NX 执行
         print(f"[Agent] 处理: {request.description[:80]}")
