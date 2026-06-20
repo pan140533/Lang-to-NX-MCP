@@ -245,11 +245,8 @@ class JournalGenerator:
         return f"    m.Tool_Cone({float(r)}, {float(h)});"
 
     def _gen_sphere(self, p: dict) -> str:
-        x = p.get("x", 0.0)
-        y = p.get("y", 0.0)
-        z = p.get("z", 0.0)
         r = p.get("radius", 25.0)
-        return f"    m.Tool_Sphere({float(x)}, {float(y)}, {float(z)}, {float(r)});"
+        return f"    m.Tool_Sphere({float(r)});"
 
     def _gen_torus(self, p: dict) -> str:
         major = p.get("major_radius", 50.0)
@@ -519,7 +516,7 @@ class JournalGenerator:
     def _gen_rotate(self, p: dict) -> str:
         axis = p.get("axis", "Z")
         angle = p.get("angle", 90.0)
-        return f'    m.Tool_Rotate("{axis}", {float(angle)});'
+        return f"    m.Tool_Rotate({float(angle)}, \"{axis}\");"
 
     def _gen_scale(self, p: dict) -> str:
         factor = p.get("factor", 1.0)
