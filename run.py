@@ -26,13 +26,13 @@ def main():
         print("📦 安装前端依赖...")
         subprocess.run("npm install", shell=True, cwd=os.path.join(ROOT, "frontend"))
 
-    # 启动后端（设置 PYTHONPATH 让 src/ 可导入）
+    # 启动后端（设置 PYTHONPATH 让 backend/ 可导入）
     print("🚀 后端 → http://localhost:8000")
     env = os.environ.copy()
-    src_dir = os.path.join(ROOT, "src")
-    env["PYTHONPATH"] = ROOT + os.pathsep + src_dir + os.pathsep + env.get("PYTHONPATH", "")
+    backend_dir = os.path.join(ROOT, "backend")
+    env["PYTHONPATH"] = ROOT + os.pathsep + backend_dir + os.pathsep + env.get("PYTHONPATH", "")
     p = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "src.fastapi_app:app", "--port", "8000"],
+        [sys.executable, "-m", "uvicorn", "backend.api:app", "--port", "8000"],
         cwd=ROOT, env=env
     )
     procs.append(p)

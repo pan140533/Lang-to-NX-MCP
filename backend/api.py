@@ -5,12 +5,11 @@ import os
 import uuid
 import json
 from pydantic import BaseModel
-from typing import Optional, Tuple
+from typing import Optional, Dict, Any
 from session_manager import SessionManager, FeatureData
-from llm_parser import LLMParser
-from geometry_utils import BoundingBox, calculate_position
 from log_system import log_operation, log_error, log_task_start, log_task_end
 import config  # 导入配置文件
+from backend.journal.generator import generate_output_name
 
 app = FastAPI()
 
@@ -25,19 +24,12 @@ app.add_middleware(
 # 初始化会话管理器
 session_manager = SessionManager(storage_dir=config.SESSION_DIR)
 
-# LLM 解析器（延迟初始化）
-llm_parser = None
+# Agent Pipeline 缓存（按 session 隔离）
+_agent_pipelines: Dict[str, Any] = {}
 
-def get_llm_parser():
-    """获取 LLM 解析器实例（延迟初始化）"""
-    global llm_parser
-    if llm_parser is None:
-        llm_parser = LLMParser(
-            api_key=config.LLM_CONFIG["api_key"],
-            base_url=config.LLM_CONFIG["base_url"],
-            model=config.LLM_CONFIG["model"]
-        )
-    return llm_parser
+# 输出目录
+OUTPUT_DIR = config.OUTPUT_DIR
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 class CommandRequest(BaseModel):
@@ -46,21 +38,51 @@ class CommandRequest(BaseModel):
     description: str
 
 
-class SessionResponse(BaseModel):
-    """会话响应"""
-    session_id: str
-    part_file: Optional[str] = None
-    features: list
-    message: str
+def _get_agent_pipeline(session_id: str):
+    """为指定 session 创建或获取 Agent Pipeline"""
+    if session_id in _agent_pipelines:
+        return _agent_pipelines[session_id]
 
+    from backend.agent.intent import IntentRecognition
+    from backend.agent.memory import ContextMemory
+    from backend.agent.planner import TaskPlanner
+    from backend.agent.executor import Executor, AgentPipeline
+    from backend.journal.generator import JournalGenerator
 
-# 配置（从 config.py 导入）
-OUTPUT_DIR = config.OUTPUT_DIR
+    memory = ContextMemory()
+    planner = TaskPlanner(memory=memory)
 
+    # 先用占位函数创建 executor 和 pipeline
+    executor = Executor(memory, planner, lambda x: "", lambda x: (True, {}))
+    pipeline = AgentPipeline(IntentRecognition(), memory, planner, executor)
 
+    def generator_func(tool_calls):
+        """将 tool_calls 转为 C# 代码"""
+        name = pipeline.current_output_name or f"plan_{session_id}"
+        gen = JournalGenerator(part_name=name)
+        return gen.generate(tool_calls)
 
-# 确保输出目录存在
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+    def executor_func(code):
+        """保存 C# 代码到 journal 文件并启动 NX 执行"""
+        name = pipeline.current_output_name or f"plan_{session_id}"
+        gen = JournalGenerator(part_name=name)
+        jpath = gen.save_journal(code)
+        result = subprocess.run(
+            [config.NX_EXE, os.path.abspath(jpath)],
+            capture_output=True, text=True, timeout=120,
+            encoding='gbk', errors='ignore'
+        )
+        if result.returncode == 0:
+            part_file = os.path.join(OUTPUT_DIR, f"{name}.prt")
+            return True, {"files": [part_file], "features": []}
+        else:
+            return False, {"error": result.stderr[:300]}
+
+    executor._generate = generator_func
+    executor._execute = executor_func
+
+    _agent_pipelines[session_id] = pipeline
+    return pipeline
 
 
 @app.post("/api/session/new")
@@ -79,10 +101,10 @@ def create_new_session():
 
 @app.post("/api/command")
 def execute_command(request: CommandRequest):
-    """执行建模指令（支持会话）"""
+    """执行建模指令 — 统一通过 Agent Pipeline 处理"""
     log_task_start("execute_command", {"description": request.description[:80]})
     try:
-        # 如果没有 session_id，创建新会话
+        # 1. 创建或获取会话
         if not request.session_id:
             session = session_manager.create_session()
             session_id = session.session_id
@@ -92,71 +114,44 @@ def execute_command(request: CommandRequest):
             if not session:
                 raise HTTPException(status_code=404, detail="会话不存在")
 
-        # 获取当前会话的特征列表（用于上下文）
-        features = session_manager.get_features(session_id)
-        context = [
-            {
-                "feature_id": f.feature_id,
-                "type": f.type,
-                "parameters": f.parameters
-            }
-            for f in features
-        ]
-        
-        # 使用 LLM 解析指令（延迟初始化）
-        parser = get_llm_parser()
-        command = parser.parse_command(request.description, context)
+        # 2. 获取 Agent Pipeline（会话级别的，带上下文记忆）
+        pipeline = _get_agent_pipeline(session_id)
 
-        print(f"[DEBUG] 解析后的指令: {command}")
+        # 3. 生成标准化输出名称并注入流水线
+        output_name = generate_output_name(request.description)
+        pipeline.current_output_name = output_name
 
-        # 如果无法识别为简单形状，尝试多步规划
-        if command.command_type == "add_feature" and not command.feature_type:
-            print(f"[DEBUG] 尝试多步规划...")
-            plan = parser.parse_plan(request.description)
-            print(f"[DEBUG] 规划步骤数: {len(plan.steps)}")
+        # 4. Agent Pipeline 处理：意图识别 → 结构分解 → 任务规划 → 代码生成 → NX 执行
+        print(f"[Agent] 处理: {request.description[:80]}")
+        result = pipeline.process(request.description)
 
-            # 保存训练数据
-            try:
-                from llm_parser import save_training_data
-                save_training_data(request.description, plan)
-            except Exception as e:
-                print(f"[DEBUG] 保存训练数据失败: {e}")
+        # 4. 从 Agent 的规划结果中提取前端渲染特征
+        plan = pipeline.last_plan
+        if plan and plan.steps:
+            features = plan_steps_to_features(plan.steps)
+            result["features"] = features
+            result["steps_count"] = len(plan.steps)
+            result["strategy"] = plan.strategy
+            if plan.human_thought:
+                result["human_thought"] = plan.human_thought[:200]
 
-            # 执行规划
-            result = execute_plan(session_id, plan)
-            return result
-
-        # 处理不同类型的指令
-        if command.command_type == "new_part":
-            session_manager.clear_session(session_id)
-            return {
-                "status": "success",
-                "session_id": session_id,
-                "message": "已开始新零件",
-                "features": []
-            }
-
-        elif command.command_type == "query":
-            features = session_manager.get_features(session_id)
-            return {
-                "status": "success",
-                "session_id": session_id,
-                "features": [f.model_dump() for f in features],
-                "message": f"当前有 {len(features)} 个特征"
-            }
-
-        elif command.command_type == "add_feature":
-            if not command.feature_type:
-                return {"status": "error", "message": "无法识别模型类型"}
-            result = add_feature_to_session(session_id, command)
-            return result
-        
+            # 同步 Agent 执行结果到 session_manager（供前端查询）
+            if result.get("status") == "success":
+                for feat in features:
+                    session_manager.add_feature(session_id, FeatureData(
+                        feature_id=feat.get("feature_id", f"feat_{uuid.uuid4().hex[:8]}"),
+                        type=feat.get("type", "unknown"),
+                        parameters=feat.get("parameters", {}),
+                        position=feat.get("position", {}),
+                        boolean_op=feat.get("boolean_op", "create"),
+                        order=feat.get("order", len(features)),
+                    ))
         else:
-            return {
-                "status": "error",
-                "message": f"不支持的指令类型: {command.command_type}"
-            }
-            
+            result["features"] = []
+
+        result["session_id"] = session_id
+        result["output_name"] = output_name
+        print(f"[Agent] 结果: {result.get('status')}, 步骤: {result.get('steps_count', 0)}, 输出: {output_name}")
         return result
 
     except Exception as e:
@@ -182,7 +177,7 @@ def plan_steps_to_features(plan_steps: list) -> list:
         if t == "draw_rectangle":
             current = {"type": "block", "x": p.get("x", 0), "y": p.get("y", 0),
                        "width": p.get("width", 100), "height": p.get("height", 60)}
-        elif t == "draw_closed_circle":
+        elif t in ("draw_closed_circle", "draw_circle"):
             current = {"type": "cylinder", "x": p.get("x", 0), "y": p.get("y", 0),
                        "radius": p.get("radius", 25)}
         elif t == "revolve":
@@ -219,7 +214,11 @@ def plan_steps_to_features(plan_steps: list) -> list:
                     "type": "block",
                     "parameters": {"length": current["width"], "width": current.get("height", current["width"]),
                                    "height": length},
-                    "position": {"calculated_coords": {"x": current["x"], "y": current["y"], "z": start}},
+                    "position": {"calculated_coords": {
+                        "x": current["x"] + current["width"] / 2,
+                        "y": current["y"] + current.get("height", current["width"]) / 2,
+                        "z": start
+                    }},
                     "boolean_op": "create", "order": len(features)
                 })
             elif current["type"] == "cylinder":
@@ -231,6 +230,35 @@ def plan_steps_to_features(plan_steps: list) -> list:
                     "boolean_op": "create", "order": len(features)
                 })
             current = {}
+        elif t == "pattern_circular":
+            # 圆形阵列：复制最后一个特征 count-1 次（原特征已占一个位置）
+            count = p.get("count", 2)
+            angle = p.get("angle", 360.0)
+            if features and count > 1:
+                last = features[-1]
+                radius = 0
+                # 尝试从特征位置推断半径
+                pos = last.get("position", {}).get("calculated_coords", {})
+                cx, cy = pos.get("x", 0), pos.get("y", 0)
+                radius = (cx**2 + cy**2) ** 0.5
+                if radius < 0.1:
+                    radius = 30  # 默认半径
+                for i in range(1, count):
+                    import math
+                    rad = math.radians(angle * i)
+                    new_pos = {
+                        "x": radius * math.cos(rad),
+                        "y": radius * math.sin(rad),
+                        "z": pos.get("z", 0)
+                    }
+                    features.append({
+                        "feature_id": f"feat_{len(features)}",
+                        "type": last["type"],
+                        "parameters": dict(last.get("parameters", {})),
+                        "position": {"calculated_coords": new_pos},
+                        "boolean_op": "create",
+                        "order": len(features)
+                    })
         elif t in ("cone", "sphere"):
             features.append({
                 "feature_id": f"feat_{len(features)}",
@@ -246,7 +274,7 @@ def plan_steps_to_features(plan_steps: list) -> list:
 
 def execute_plan(session_id: str, plan) -> dict:
     """执行多步建模规划"""
-    from tools.journal_gen import JournalGenerator
+    from backend.journal.generator import JournalGenerator
 
     # 规划步骤全部转为可执行步骤（过滤掉重复的 new_document）
     steps = [{"tool": "new_document", "params": {}}]
@@ -262,7 +290,7 @@ def execute_plan(session_id: str, plan) -> dict:
     result = subprocess.run(
         [config.NX_EXE, os.path.abspath(jpath)],
         capture_output=True, text=True, timeout=120,
-        encoding='utf-8', errors='ignore'
+        encoding='gbk', errors='ignore'
     )
 
     if result.returncode == 0:
@@ -319,7 +347,7 @@ def add_feature_to_session(session_id: str, command):
     })]
 
     # 转换为 JSON 步骤
-    from tools.journal_gen import JournalGenerator
+    from backend.journal.generator import JournalGenerator
     steps = [{"tool": "new_document", "params": {}}]
     for feat in all_features:
         ft = feat.type if not isinstance(feat, dict) else feat["type"]
@@ -366,7 +394,7 @@ def add_feature_to_session(session_id: str, command):
     result = subprocess.run(
         [config.NX_EXE, os.path.abspath(jpath)],
         capture_output=True, text=True, timeout=120,
-        encoding='utf-8', errors='ignore'
+        encoding='gbk', errors='ignore'
     )
 
     if result.returncode == 0:

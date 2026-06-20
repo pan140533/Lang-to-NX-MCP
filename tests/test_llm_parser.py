@@ -2,7 +2,9 @@
 LLM 解析器单元测试
 """
 import unittest
+import os
 from unittest.mock import Mock, patch
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend')))
 from llm_parser import LLMParser, FeatureCommand, BlockDimensions, CylinderDimensions, Position
 
 

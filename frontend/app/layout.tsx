@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Text-to-CAD',
-  description: 'AI-driven CAD generation',
+  title: 'Lang-to-NX',
+  description: '自然语言驱动 Siemens NX 建模',
 }
 
 export default function RootLayout({

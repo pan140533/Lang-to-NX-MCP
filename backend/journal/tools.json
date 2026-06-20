@@ -1,0 +1,608 @@
+{
+  "version": "4.0",
+  "cad_system": "Siemens NX 2412",
+  "description": "NX 建模工具完整清单 — AI 输出 JSON → generator.py → C# → run_journal.exe → NX",
+  "notes": [
+    "所有工具通过 nx_modeler.cs 固定 API 调用，不猜测 NX API",
+    "AI 只需输出正确的 JSON，由系统翻译为 NX C# API",
+    "工具按建模流程分类：文档 → 草图 → 绘图 → 建模 → 修饰 → 高级"
+  ],
+  "tools": [
+    // ═══════════════════════════════════════════════════════════
+    // 文档操作
+    // ═══════════════════════════════════════════════════════════
+    {
+      "name": "new_document",
+      "description": "创建新部件文件（每次建模必须先调用）",
+      "category": "document",
+      "params": {}
+    },
+    {
+      "name": "save_model",
+      "description": "保存模型为 PRT 文件",
+      "category": "document",
+      "params": {}
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // 草图操作
+    // ═══════════════════════════════════════════════════════════
+    {
+      "name": "create_sketch_on_plane",
+      "description": "在 XY 平面上创建草图",
+      "category": "sketch",
+      "params": {},
+      "returns": {"type": "ref", "ref_type": "sketch"}
+    },
+    {
+      "name": "create_sketch_on_face",
+      "description": "在指定面上创建草图",
+      "category": "sketch",
+      "params": {
+        "face_index": {"type": "number", "description": "面索引（从0开始）"}
+      }
+    },
+    {
+      "name": "close_sketch",
+      "description": "关闭当前草图",
+      "category": "sketch",
+      "params": {}
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // 绘图工具
+    // ═══════════════════════════════════════════════════════════
+    {
+      "name": "draw_closed_circle",
+      "description": "画圆",
+      "category": "draw",
+      "params": {
+        "x": {"type": "number", "description": "圆心X (mm)"},
+        "y": {"type": "number", "description": "圆心Y (mm)"},
+        "radius": {"type": "number", "description": "半径 (mm)"}
+      }
+    },
+    {
+      "name": "draw_arc",
+      "description": "画圆弧",
+      "category": "draw",
+      "params": {
+        "x": {"type": "number", "description": "圆心X (mm)"},
+        "y": {"type": "number", "description": "圆心Y (mm)"},
+        "radius": {"type": "number", "description": "半径 (mm)"},
+        "start_angle": {"type": "number", "description": "起始角度（度）"},
+        "end_angle": {"type": "number", "description": "结束角度（度）"}
+      }
+    },
+    {
+      "name": "draw_rectangle",
+      "description": "画矩形（4条线闭合）",
+      "category": "draw",
+      "params": {
+        "x": {"type": "number", "description": "左下角X (mm)"},
+        "y": {"type": "number", "description": "左下角Y (mm)"},
+        "width": {"type": "number", "description": "宽度 (mm)"},
+        "height": {"type": "number", "description": "高度 (mm)"}
+      }
+    },
+    {
+      "name": "draw_line",
+      "description": "画直线",
+      "category": "draw",
+      "params": {
+        "x1": {"type": "number", "description": "起点X (mm)"},
+        "y1": {"type": "number", "description": "起点Y (mm)"},
+        "x2": {"type": "number", "description": "终点X (mm)"},
+        "y2": {"type": "number", "description": "终点Y (mm)"}
+      }
+    },
+    {
+      "name": "draw_polyline",
+      "description": "画多段线（连续直线）",
+      "category": "draw",
+      "params": {
+        "points": {"type": "array", "description": "点坐标数组 [[x1,y1],[x2,y2],...]", "items": {"type": "array", "items": {"type": "number"}}}
+      }
+    },
+    {
+      "name": "draw_spline",
+      "description": "画样条曲线",
+      "category": "draw",
+      "params": {
+        "points": {"type": "array", "description": "点坐标数组 [[x1,y1],[x2,y2],...]", "items": {"type": "array", "items": {"type": "number"}}}
+      }
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // 基本体素
+    // ═══════════════════════════════════════════════════════════
+    {
+      "name": "block",
+      "description": "创建块/立方体",
+      "category": "primitive",
+      "params": {
+        "x": {"type": "number", "description": "原点X (mm)", "optional": true, "default": 0},
+        "y": {"type": "number", "description": "原点Y (mm)", "optional": true, "default": 0},
+        "z": {"type": "number", "description": "原点Z (mm)", "optional": true, "default": 0},
+        "length": {"type": "number", "description": "长度 (mm)"},
+        "width": {"type": "number", "description": "宽度 (mm)"},
+        "height": {"type": "number", "description": "高度 (mm)"}
+      }
+    },
+    {
+      "name": "cylinder",
+      "description": "创建圆柱体",
+      "category": "primitive",
+      "params": {
+        "x": {"type": "number", "description": "底面中心X (mm)", "optional": true, "default": 0},
+        "y": {"type": "number", "description": "底面中心Y (mm)", "optional": true, "default": 0},
+        "z": {"type": "number", "description": "底面中心Z (mm)", "optional": true, "default": 0},
+        "radius": {"type": "number", "description": "半径 (mm)"},
+        "height": {"type": "number", "description": "高度 (mm)"}
+      }
+    },
+    {
+      "name": "cone",
+      "description": "创建圆锥体",
+      "category": "primitive",
+      "params": {
+        "radius": {"type": "number", "description": "底部半径 (mm)"},
+        "height": {"type": "number", "description": "高度 (mm)"}
+      }
+    },
+    {
+      "name": "sphere",
+      "description": "创建球体",
+      "category": "primitive",
+      "params": {
+        "x": {"type": "number", "description": "中心X (mm)", "optional": true, "default": 0},
+        "y": {"type": "number", "description": "中心Y (mm)", "optional": true, "default": 0},
+        "z": {"type": "number", "description": "中心Z (mm)", "optional": true, "default": 0},
+        "radius": {"type": "number", "description": "半径 (mm)"}
+      }
+    },
+    {
+      "name": "torus",
+      "description": "创建圆环体",
+      "category": "primitive",
+      "params": {
+        "major_radius": {"type": "number", "description": "主半径（环中心到管中心）(mm)"},
+        "minor_radius": {"type": "number", "description": "次半径（管半径）(mm)"}
+      }
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // 扫描特征（把2D变成3D）
+    // ═══════════════════════════════════════════════════════════
+    {
+      "name": "extrude",
+      "description": "拉伸草图生成实体（从Z=0向上）",
+      "category": "sweep",
+      "params": {
+        "length": {"type": "number", "description": "拉伸长度 (mm)"}
+      }
+    },
+    {
+      "name": "extrude_from",
+      "description": "从指定高度拉伸草图",
+      "category": "sweep",
+      "params": {
+        "start": {"type": "number", "description": "起始高度 (mm)"},
+        "length": {"type": "number", "description": "拉伸长度 (mm)"}
+      }
+    },
+    {
+      "name": "extrude_cut",
+      "description": "切除材料（在已有实体上挖孔/开槽）",
+      "category": "sweep",
+      "params": {
+        "length": {"type": "number", "description": "切除深度 (mm)"}
+      }
+    },
+    {
+      "name": "revolve",
+      "description": "旋转草图生成旋转体（绕Z轴）",
+      "category": "sweep",
+      "params": {
+        "angle": {"type": "number", "description": "旋转角度（度），默认360", "optional": true, "default": 360}
+      }
+    },
+    {
+      "name": "sweep",
+      "description": "扫掠：截面沿路径移动生成实体",
+      "category": "sweep",
+      "params": {
+        "path_points": {"type": "array", "description": "路径点坐标 [[x,y,z],...]", "items": {"type": "array", "items": {"type": "number"}}}
+      },
+      "notes": "需要先创建草图作为截面"
+    },
+    {
+      "name": "loft",
+      "description": "放样：多个截面过渡生成实体",
+      "category": "sweep",
+      "params": {
+        "sections": {"type": "array", "description": "截面草图引用数组", "items": {"type": "string"}}
+      },
+      "notes": "需要先创建多个草图作为截面"
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // 布尔操作
+    // ═══════════════════════════════════════════════════════════
+    {
+      "name": "boolean_unite",
+      "description": "布尔合并：将两个实体合并成一个",
+      "category": "boolean",
+      "params": {
+        "target_body": {"type": "string", "description": "目标体引用"},
+        "tool_body": {"type": "string", "description": "工具体引用"}
+      }
+    },
+    {
+      "name": "boolean_subtract",
+      "description": "布尔减去：从目标体减去工具体",
+      "category": "boolean",
+      "params": {
+        "target_body": {"type": "string", "description": "目标体引用"},
+        "tool_body": {"type": "string", "description": "工具体引用"}
+      }
+    },
+    {
+      "name": "boolean_intersect",
+      "description": "布尔相交：取两个实体的公共部分",
+      "category": "boolean",
+      "params": {
+        "target_body": {"type": "string", "description": "目标体引用"},
+        "tool_body": {"type": "string", "description": "工具体引用"}
+      }
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // 细节特征
+    // ═══════════════════════════════════════════════════════════
+    {
+      "name": "chamfer",
+      "description": "倒角（削掉棱边）",
+      "category": "detail",
+      "params": {
+        "length": {"type": "number", "description": "倒角长度 (mm)"}
+      }
+    },
+    {
+      "name": "fillet",
+      "description": "圆角（把棱边磨圆）",
+      "category": "detail",
+      "params": {
+        "radius": {"type": "number", "description": "圆角半径 (mm)"}
+      }
+    },
+    {
+      "name": "edge_blend",
+      "description": "边圆角（指定边）",
+      "category": "detail",
+      "params": {
+        "radius": {"type": "number", "description": "圆角半径 (mm)"},
+        "edge_indices": {"type": "array", "description": "边索引数组", "items": {"type": "number"}}
+      }
+    },
+    {
+      "name": "shell",
+      "description": "抽壳：把实体变成薄壳",
+      "category": "detail",
+      "params": {
+        "thickness": {"type": "number", "description": "壁厚 (mm)"},
+        "remove_face_index": {"type": "number", "description": "要移除的面索引", "optional": true}
+      }
+    },
+    {
+      "name": "hole",
+      "description": "打孔",
+      "category": "detail",
+      "params": {
+        "x": {"type": "number", "description": "孔中心X (mm)"},
+        "y": {"type": "number", "description": "孔中心Y (mm)"},
+        "diameter": {"type": "number", "description": "孔直径 (mm)"},
+        "depth": {"type": "number", "description": "孔深度 (mm)"},
+        "hole_type": {"type": "string", "description": "孔类型：simple/counterbore/countersink", "optional": true, "default": "simple"}
+      }
+    },
+    {
+      "name": "pocket",
+      "description": "挖槽（矩形槽）",
+      "category": "detail",
+      "params": {
+        "x": {"type": "number", "description": "槽中心X (mm)"},
+        "y": {"type": "number", "description": "槽中心Y (mm)"},
+        "length": {"type": "number", "description": "槽长度 (mm)"},
+        "width": {"type": "number", "description": "槽宽度 (mm)"},
+        "depth": {"type": "number", "description": "槽深度 (mm)"}
+      }
+    },
+    {
+      "name": "boss",
+      "description": "添加凸台",
+      "category": "detail",
+      "params": {
+        "x": {"type": "number", "description": "凸台中心X (mm)"},
+        "y": {"type": "number", "description": "凸台中心Y (mm)"},
+        "diameter": {"type": "number", "description": "凸台直径 (mm)"},
+        "height": {"type": "number", "description": "凸台高度 (mm)"}
+      }
+    },
+    {
+      "name": "pad",
+      "description": "添加凸垫（矩形凸起）",
+      "category": "detail",
+      "params": {
+        "x": {"type": "number", "description": "凸垫中心X (mm)"},
+        "y": {"type": "number", "description": "凸垫中心Y (mm)"},
+        "length": {"type": "number", "description": "凸垫长度 (mm)"},
+        "width": {"type": "number", "description": "凸垫宽度 (mm)"},
+        "height": {"type": "number", "description": "凸垫高度 (mm)"}
+      }
+    },
+    {
+      "name": "slot",
+      "description": "开槽（直线槽）",
+      "category": "detail",
+      "params": {
+        "x": {"type": "number", "description": "槽起点X (mm)"},
+        "y": {"type": "number", "description": "槽起点Y (mm)"},
+        "length": {"type": "number", "description": "槽长度 (mm)"},
+        "width": {"type": "number", "description": "槽宽度 (mm)"},
+        "depth": {"type": "number", "description": "槽深度 (mm)"}
+      }
+    },
+    {
+      "name": "groove",
+      "description": "环形沟槽",
+      "category": "detail",
+      "params": {
+        "diameter": {"type": "number", "description": "沟槽直径 (mm)"},
+        "width": {"type": "number", "description": "沟槽宽度 (mm)"},
+        "depth": {"type": "number", "description": "沟槽深度 (mm)"}
+      }
+    },
+    {
+      "name": "thread",
+      "description": "螺纹",
+      "category": "detail",
+      "params": {
+        "cylinder_ref": {"type": "string", "description": "圆柱面引用"},
+        "thread_type": {"type": "string", "description": "螺纹类型：metric/unified", "optional": true, "default": "metric"},
+        "length": {"type": "number", "description": "螺纹长度 (mm)", "optional": true}
+      }
+    },
+    {
+      "name": "pattern_linear",
+      "description": "线性阵列：沿直线复制特征",
+      "category": "detail",
+      "params": {
+        "feature_ref": {"type": "string", "description": "要阵列的特征引用"},
+        "count_x": {"type": "number", "description": "X方向数量"},
+        "spacing_x": {"type": "number", "description": "X方向间距 (mm)"},
+        "count_y": {"type": "number", "description": "Y方向数量", "optional": true, "default": 1},
+        "spacing_y": {"type": "number", "description": "Y方向间距 (mm)", "optional": true, "default": 0}
+      }
+    },
+    {
+      "name": "pattern_circular",
+      "description": "圆形阵列：绕轴复制特征",
+      "category": "detail",
+      "params": {
+        "feature_ref": {"type": "string", "description": "要阵列的特征引用"},
+        "count": {"type": "number", "description": "阵列数量"},
+        "angle": {"type": "number", "description": "阵列角度（度）", "optional": true, "default": 360}
+      }
+    },
+    {
+      "name": "mirror_feature",
+      "description": "镜像特征",
+      "category": "detail",
+      "params": {
+        "feature_ref": {"type": "string", "description": "要镜像的特征引用"},
+        "mirror_plane": {"type": "string", "description": "镜像平面：XY/YZ/XZ", "default": "YZ"}
+      }
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // 曲面建模
+    // ═══════════════════════════════════════════════════════════
+    {
+      "name": "through_curves",
+      "description": "通过曲线组：多个截面曲线生成曲面/实体",
+      "category": "surface",
+      "params": {
+        "sections": {"type": "array", "description": "截面草图引用数组", "items": {"type": "string"}}
+      }
+    },
+    {
+      "name": "through_curve_mesh",
+      "description": "通过曲线网格：双方向曲线网格生成曲面",
+      "category": "surface",
+      "params": {
+        "primary_curves": {"type": "array", "description": "主方向曲线引用", "items": {"type": "string"}},
+        "cross_curves": {"type": "array", "description": "交叉方向曲线引用", "items": {"type": "string"}}
+      }
+    },
+    {
+      "name": "ruled",
+      "description": "直纹面：两条曲线间生成曲面",
+      "category": "surface",
+      "params": {
+        "curve1_ref": {"type": "string", "description": "第一条曲线引用"},
+        "curve2_ref": {"type": "string", "description": "第二条曲线引用"}
+      }
+    },
+    {
+      "name": "bounded_plane",
+      "description": "有界平面：边界曲线围成平面片体",
+      "category": "surface",
+      "params": {
+        "boundary_curves": {"type": "array", "description": "边界曲线引用", "items": {"type": "string"}}
+      }
+    },
+    {
+      "name": "fill_surface",
+      "description": "填充曲面：填充边界缺口",
+      "category": "surface",
+      "params": {
+        "boundary_curves": {"type": "array", "description": "边界曲线引用", "items": {"type": "string"}}
+      }
+    },
+    {
+      "name": "offset_surface",
+      "description": "偏置曲面：曲面偏移一定距离",
+      "category": "surface",
+      "params": {
+        "face_ref": {"type": "string", "description": "要偏置的面引用"},
+        "distance": {"type": "number", "description": "偏置距离 (mm)"}
+      }
+    },
+    {
+      "name": "extension",
+      "description": "延伸曲面：延伸曲面边界",
+      "category": "surface",
+      "params": {
+        "face_ref": {"type": "string", "description": "要延伸的面引用"},
+        "edge_ref": {"type": "string", "description": "要延伸的边引用"},
+        "length": {"type": "number", "description": "延伸长度 (mm)"}
+      }
+    },
+    {
+      "name": "trim_surface",
+      "description": "修剪曲面：用边界修剪曲面",
+      "category": "surface",
+      "params": {
+        "face_ref": {"type": "string", "description": "要修剪的面引用"},
+        "boundary_curves": {"type": "array", "description": "修剪边界曲线", "items": {"type": "string"}}
+      }
+    },
+    {
+      "name": "face_blend",
+      "description": "面圆角：两曲面间圆角过渡",
+      "category": "surface",
+      "params": {
+        "face1_ref": {"type": "string", "description": "第一个面引用"},
+        "face2_ref": {"type": "string", "description": "第二个面引用"},
+        "radius": {"type": "number", "description": "圆角半径 (mm)"}
+      }
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // 同步建模（直接编辑）
+    // ═══════════════════════════════════════════════════════════
+    {
+      "name": "move_face",
+      "description": "移动面：直接推拉面",
+      "category": "sync",
+      "params": {
+        "face_indices": {"type": "array", "description": "要移动的面索引", "items": {"type": "number"}},
+        "distance": {"type": "number", "description": "移动距离 (mm)"},
+        "direction": {"type": "string", "description": "移动方向：X/Y/Z", "default": "Z"}
+      }
+    },
+    {
+      "name": "delete_face",
+      "description": "删除面：删除面并自动修复",
+      "category": "sync",
+      "params": {
+        "face_indices": {"type": "array", "description": "要删除的面索引", "items": {"type": "number"}}
+      }
+    },
+    {
+      "name": "replace_face",
+      "description": "替换面：替换面的几何",
+      "category": "sync",
+      "params": {
+        "face_indices": {"type": "array", "description": "要替换的面索引", "items": {"type": "number"}},
+        "target_face_ref": {"type": "string", "description": "目标面引用"}
+      }
+    },
+    {
+      "name": "resize_face",
+      "description": "调整面大小：改变孔/槽尺寸",
+      "category": "sync",
+      "params": {
+        "face_indices": {"type": "array", "description": "要调整的面索引", "items": {"type": "number"}},
+        "new_diameter": {"type": "number", "description": "新直径 (mm)", "optional": true},
+        "new_radius": {"type": "number", "description": "新半径 (mm)", "optional": true}
+      }
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // 变换操作
+    // ═══════════════════════════════════════════════════════════
+    {
+      "name": "translate",
+      "description": "平移实体",
+      "category": "transform",
+      "params": {
+        "dx": {"type": "number", "description": "X方向位移 (mm)"},
+        "dy": {"type": "number", "description": "Y方向位移 (mm)"},
+        "dz": {"type": "number", "description": "Z方向位移 (mm)", "optional": true, "default": 0}
+      }
+    },
+    {
+      "name": "rotate",
+      "description": "旋转实体",
+      "category": "transform",
+      "params": {
+        "axis": {"type": "string", "description": "旋转轴：X/Y/Z", "default": "Z"},
+        "angle": {"type": "number", "description": "旋转角度（度）"}
+      }
+    },
+    {
+      "name": "scale",
+      "description": "缩放实体",
+      "category": "transform",
+      "params": {
+        "factor": {"type": "number", "description": "缩放因子"}
+      }
+    },
+
+    // ═══════════════════════════════════════════════════════════
+    // 测量与查询
+    // ═══════════════════════════════════════════════════════════
+    {
+      "name": "measure_distance",
+      "description": "测量距离",
+      "category": "measure",
+      "params": {
+        "point1": {"type": "array", "description": "第一个点 [x,y,z]", "items": {"type": "number"}},
+        "point2": {"type": "array", "description": "第二个点 [x,y,z]", "items": {"type": "number"}}
+      },
+      "returns": {"type": "number", "description": "距离值 (mm)"}
+    },
+    {
+      "name": "measure_volume",
+      "description": "测量体积",
+      "category": "measure",
+      "params": {},
+      "returns": {"type": "number", "description": "体积值 (mm³)"}
+    },
+    {
+      "name": "measure_mass",
+      "description": "测量质量",
+      "category": "measure",
+      "params": {
+        "density": {"type": "number", "description": "密度 (kg/m³)", "optional": true, "default": 7850}
+      },
+      "returns": {"type": "number", "description": "质量值 (kg)"}
+    }
+  ],
+  "total_count": 56,
+  "categories": {
+    "document": 2,
+    "sketch": 3,
+    "draw": 6,
+    "primitive": 5,
+    "sweep": 6,
+    "boolean": 3,
+    "detail": 14,
+    "surface": 9,
+    "sync": 4,
+    "transform": 3,
+    "measure": 3
+  }
+}

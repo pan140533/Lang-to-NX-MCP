@@ -23,3 +23,6 @@ training_data/
 *.lnk
 .DS_Store
 Thumbs.db
+
+# 冗余文件
+journal_clean.cs

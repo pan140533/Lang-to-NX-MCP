@@ -1,11 +1,11 @@
 """NX 环境检测脚本
 
-检查当前系统能否运行 NXOpen Python API。
+检查当前系统能否运行 C# Journal + NX 建模流程。
 """
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 print("=" * 55)
 print("  Lang-to-NX 环境检测")
@@ -49,21 +49,15 @@ else:
 
 # 5. 检查工具库结构
 print(f"\n[5/5] 检查项目结构...")
-src_dir = Path(__file__).parent.parent / "src"
-tools_dir = src_dir / "tools"
+backend_dir = Path(__file__).parent.parent / "backend"
+journal_dir = backend_dir / "journal"
 files = [
-    src_dir / "app.py",
-    src_dir / "log_system.py",
-    src_dir / "pipeline_demo.py",
-    tools_dir / "__init__.py",
-    tools_dir / "nx_session.py",
-    tools_dir / "executor.py",
-    tools_dir / "sketch.py",
-    tools_dir / "features.py",
-    tools_dir / "planes.py",
-    tools_dir / "selection.py",
-    tools_dir / "io.py",
-    tools_dir / "tools.json",
+    backend_dir / "api.py",
+    backend_dir / "log_system.py",
+    backend_dir / "llm_parser.py",
+    journal_dir / "generator.py",
+    journal_dir / "nx_modeler.cs",
+    journal_dir / "tools.json",
 ]
 all_ok = True
 for f in files:
@@ -79,7 +73,7 @@ if all_ok:
     print(f"\n  启动方式:")
     print(f"    python run.py")
     print(f"\n  打开浏览器:")
-    print(f"    http://127.0.0.1:5005")
+    print(f"    http://127.0.0.1:8000")
 else:
     print("  ❌ 项目结构不完整，请检查缺失文件")
 print(f"{'='*55}")

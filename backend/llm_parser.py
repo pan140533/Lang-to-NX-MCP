@@ -64,37 +64,96 @@ class ModelingPlan(BaseModel):
 # ── 可用工具清单（给LLM参考）──
 
 TOOL_DESCRIPTIONS = """
-可用工具列表（按功能分类）：
+可用工具列表（按功能分类，共56个）：
 
-══ 基础操作 ══
+══ 文档操作 ══
 - new_document — 创建新文件（每次第一步）
+- save_model — 保存模型为 .prt 文件
+
+══ 草图操作 ══
 - create_sketch_on_plane — 创建XY平面草图
+- create_sketch_on_face(face_index) — 在指定面上创建草图
 - close_sketch — 关闭当前草图
 
 ══ 画图工具 ══
 - draw_closed_circle(x, y, radius) — 画圆
+- draw_arc(x, y, radius, start_angle, end_angle) — 画圆弧
 - draw_rectangle(x, y, width, height) — 画矩形
 - draw_line(x1, y1, x2, y2) — 画直线
+- draw_polyline(points) — 画多段线 [[x1,y1],[x2,y2],...]
+- draw_spline(points) — 画样条曲线
+
+══ 基本体素 ══
+- block(x, y, z, length, width, height) — 块/立方体
+- cylinder(x, y, z, radius, height) — 圆柱体
+- cone(radius, height) — 圆锥体
+- sphere(x, y, z, radius) — 球体
+- torus(major_radius, minor_radius) — 圆环体
 
 ══ 拉伸（把2D草图变成3D）══
 - extrude(length) — 从 Z=0 向上拉伸
 - extrude_from(start, length) — 从指定高度拉伸
+- extrude_cut(length) — 切除材料（在已有实体上开孔/挖槽）
 
 ══ 旋转（适合圆形/对称零件）══
 - revolve(angle=360) — 把草图绕Z轴旋转成实体
   适用于：花瓶、轮子、圆盘、轴类、碗、杯子等旋转对称的零件
 
-══ 切除（在已有实体上开孔/挖槽）══
-- extrude_cut(length) — 切除材料
-  适用于：开孔、挖槽、去除不需要的部分
+══ 扫掠/放样 ══
+- sweep(path_points) — 截面沿路径扫掠 [[x,y,z],...]
+- loft(sections) — 多个截面放样过渡
+
+══ 布尔操作 ══
+- boolean_unite(target_body, tool_body) — 合并两个实体
+- boolean_subtract(target_body, tool_body) — 从目标体减去工具体
+- boolean_intersect(target_body, tool_body) — 取两个实体的公共部分
 
 ══ 边缘处理 ══
 - chamfer(length) — 倒角（削掉棱边）
 - fillet(radius) — 圆角（把棱边磨圆）
+- edge_blend(radius, edge_indices) — 指定边圆角
 
-══ 高级形状 ══
-- cone(radius, height) — 圆锥
-- sphere(radius) — 球体
+══ 细节特征 ══
+- shell(thickness, remove_face_index) — 抽壳
+- hole(x, y, diameter, depth, hole_type) — 打孔
+- pocket(x, y, length, width, depth) — 挖矩形槽
+- boss(x, y, diameter, height) — 添加圆形凸台
+- pad(x, y, length, width, height) — 添加矩形凸垫
+- slot(x, y, length, width, depth) — 开直线槽
+- groove(diameter, width, depth) — 环形沟槽
+- thread(cylinder_ref, thread_type, length) — 螺纹
+
+══ 阵列与镜像 ══
+- pattern_linear(feature_ref, count_x, spacing_x, count_y, spacing_y) — 线性阵列
+- pattern_circular(feature_ref, count, angle) — 圆形阵列
+- mirror_feature(feature_ref, mirror_plane) — 镜像特征
+
+══ 曲面建模 ══
+- through_curves(sections) — 通过曲线组
+- through_curve_mesh(primary_curves, cross_curves) — 曲线网格
+- ruled(curve1_ref, curve2_ref) — 直纹面
+- bounded_plane(boundary_curves) — 有界平面
+- fill_surface(boundary_curves) — 填充曲面
+- offset_surface(face_ref, distance) — 偏置曲面
+- extension(face_ref, edge_ref, length) — 延伸曲面
+- trim_surface(face_ref, boundary_curves) — 修剪曲面
+- face_blend(face1_ref, face2_ref, radius) — 面圆角
+
+══ 同步建模 ══
+- move_face(face_indices, distance, direction) — 移动面
+- delete_face(face_indices) — 删除面
+- replace_face(target_faces, tool_faces) — 替换面
+- resize_face(face_indices, new_radius) — 调整面大小
+
+══ 变换操作 ══
+- translate(dx, dy, dz) — 平移
+- rotate(angle, axis) — 旋转
+- scale(factor) — 缩放
+
+══ 测量查询 ══
+- measure_distance(x1, y1, z1, x2, y2, z2) — 测量距离
+- measure_volume — 测量体积
+- measure_mass — 测量质量
 
 坐标系统：XY为水平面，Z为垂直方向（高度）。
 X=左右宽度，Y=前后深度，Z=上下高度。
@@ -104,6 +163,8 @@ X=左右宽度，Y=前后深度，Z=上下高度。
 2. 开孔/挖槽 → 先建主体 → 再画要切掉的形状 → extrude_cut
 3. 多个部件 → 分别画出各个部件，用 extrude_from 控制位置
 4. 边缘美化 → chamfer(倒角) / fillet(圆角) 最后加
+5. 圆柱体 → 用 cylinder 或 draw_closed_circle + extrude
+6. 方块 → 用 block 或 draw_rectangle + extrude
 
 注意：不是所有模型都需要底座！只有实际需要底座的才加。
 """

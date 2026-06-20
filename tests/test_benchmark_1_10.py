@@ -15,7 +15,7 @@ import re
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 # ── 配置 ──
 API_KEY = os.getenv("DEEPSEEK_API_KEY") or ""
