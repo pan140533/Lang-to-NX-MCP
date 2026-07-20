@@ -1,275 +1,218 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/status-开发中-yellow" alt="Status">
-  <img src="https://img.shields.io/badge/NX-2412-blue" alt="NX Version">
-  <img src="https://img.shields.io/badge/python-3.10%2B-green" alt="Python">
+  <img src="https://img.shields.io/badge/status-active-success" alt="Status">
+  <img src="https://img.shields.io/badge/NX-2412-blue" alt="NX">
+  <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
+  <img src="https://img.shields.io/badge/C%23-5.0-purple" alt="C#">
   <img src="https://img.shields.io/badge/MCP-1.0-orange" alt="MCP">
 </p>
 
-<h1 align="center">Lang-to-NX MCP</h1>
-<p align="center"><strong>让 AI 直接操控 Siemens NX 建模的 MCP 服务器</strong></p>
-<p align="center">一句话描述自然语言需求 → AI 规划建模步骤 → 自动生成 3D 模型<br><i>自然语言 → 3D 模型，一步到位</i></p>
+<h1 align="center">Lang-to-NX</h1>
+<p align="center"><strong>自然语言驱动 Siemens NX 自动建模</strong></p>
+<p align="center">
+  <i>"给我一个 17 齿的齿轮"  →  AI 自动规划  →  NX 生成 .prt 文件</i>
+</p>
 
 ---
 
-## 📖 项目简介
+## 这是什么？
 
-**Lang-to-NX MCP** 是一个基于 **MCP（Model Context Protocol）** 协议的服务器，它将通用 AI Agent（如 Claude、Cursor 等）与 Siemens NX CAD 系统连接起来。
-
-你只需要用自然语言描述想要的模型，AI 就会：
-1. 理解你的意图
-2. 规划建模步骤（草图、拉伸、旋转、阵列等）
-3. 生成 NX Journal 脚本
-4. 调用 NX 自动执行建模
-5. 输出 `.prt` 3D 模型文件
-
-
----
-
-## ✨ 核心特性
-
-| 特性 | 说明 |
-|------|------|
-| 🔌 **MCP 协议标准** | 任何支持 MCP 的 AI Agent（Claude、Cursor 等）即插即用 |
-| 🚀 **外部进程执行** | 使用 NX 的 `run_journal.exe` 执行建模，用完即退，不占 License |
-| 🏗️ **批量建模** | 一次性生成大量模型，适合自动化流水线 |
-| 🔧 **分层架构** | AI 层 → 协议层 → 代码生成层 → NX 执行层，各层解耦 |
-| 🌐 **HTTP API 可选** | 提供 FastAPI 接口，方便前端集成 |
-
----
-
-## 🏗️ 架构总览
+**Lang-to-NX** 是一个 MCP（Model Context Protocol）服务器，让 Claude 等 AI Agent 能直接操控 Siemens NX 进行 3D 建模。你用自然语言描述想要的零件，AI 自动理解、规划步骤、生成 C# 脚本、驱动 NX 执行，最终输出 `.prt` 模型文件。
 
 ```
-第1层: AI Agent 层
-  Claude / Cursor / 任何 MCP Client
-  理解用户意图、规划建模步骤、调用工具
-      │ MCP 协议 (stdio)
-      ▼
-第2层: MCP 协议层（Python）
-  工具注册 │ 参数校验 │ 错误格式化
-  不涉及 CAD 操作，只做协议转换
-      │
-      ▼
-第3层: C# Journal 生成层
-  generator.py 将 JSON 建模步骤转为 C# 代码
-  nx_modeler.cs 封装 NXOpen API 调用
-      │ subprocess
-      ▼
-第4层: NX 执行层
-  run_journal.exe 编译执行 C# 脚本
-  输出 .prt 3D 模型文件，用完即退
-```
-
-### 数据流示例
-
-```
-用户输入："创建一个直径 60mm、高 20mm 的圆柱"
-
-AI Agent 规划步骤 →
-  nx_execute_plan({
-    steps: [
-      {"tool": "cylinder", "params": {"radius": 30, "height": 20}}
-    ]
-  })
-
-  → JournalGenerator.generate(steps)
-    → 生成 C# 脚本
-
-  → subprocess → run_journal.exe
-    → NX 执行建模
-    → 输出 .prt 文件
+你说："做个三叶风扇，中心带孔"
+     │
+     ▼
+AI 理解意图 → 识别圆形阵列模式 → 规划步骤 → 生成 C# → NX 执行 → 风扇.prt
 ```
 
 ---
 
-## 🚀 快速开始
+## 解决什么问题？
+
+Siemens NX 是工业级闭源 CAD 软件，广泛用于航空航天、汽车制造。AI 无法直接操作其内部 3D 几何数据。**唯一入口是 NXOpen API**——NX 官方提供的二次开发接口，本质就是人类 CAD 操作（草图、拉伸、旋转、阵列）的编程封装。
+
+> 核心思路：**让 AI 扮演一个"会写 NX 二次开发脚本的工程师"。**
+
+---
+
+## 架构
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  第1层 · AI Agent                                        │
+│  Claude / Cursor / 任何支持 MCP 的 AI                    │
+│  理解意图、规划建模步骤、调用 MCP 工具                     │
+├─────────────────────────────────────────────────────────┤
+│  第2层 · MCP 协议层 (Python)                             │
+│  工具注册 · 参数校验 · 错误处理                            │
+│  53 种建模操作封装为标准化工具                             │
+├─────────────────────────────────────────────────────────┤
+│  第3层 · C# Journal 生成                                 │
+│  generator.py   JSON 步骤 → C# 代码                      │
+│  nx_modeler.cs  NXOpen API 封装（58 个方法）              │
+├─────────────────────────────────────────────────────────┤
+│  第4层 · NX 执行层                                       │
+│  run_journal.exe 编译执行 C# 脚本                        │
+│  NX 用完即退出，不占用 License                            │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 为什么用外部进程而不是 Python NXOpen API？
+
+| | Python NXOpen API | **本项目** |
+|---|---|---|
+| NX 状态 | 必须一直打开 | **用完即退，不占 License** |
+| 稳定性 | 进程内逻辑不稳定 | **进程隔离，崩不影响主系统** |
+| 批量建模 | 不适合 | **天然适合** |
+
+---
+
+## 能做什么
+
+### 53 种建模操作
+
+| 类别 | 操作 | 数量 |
+|------|------|------|
+| 📐 草图 | 创建草图、画圆/矩形/线/弧/样条曲线 | 10 |
+| 📦 体素 | 方块、圆柱、圆锥、球体、圆环 | 5 |
+| 🔧 特征 | 拉伸、旋转、扫掠、放样、抽壳、打孔 | 12 |
+| 🧩 布尔 | 求和、求差、求交 | 3 |
+| ✨ 细节 | 倒角、圆角、边倒圆 | 3 |
+| 🔄 阵列 | 圆形阵列、线性阵列、镜像 | 3 |
+| 🏗️ 曲面 | 直纹面、通过曲线组、填充面、修剪面 | 8 |
+| 🔀 变换 | 移动、旋转、缩放 | 3 |
+| 📏 测量 | 距离、体积、质量 | 3 |
+| 📄 文档 | 新建、保存 | 2 |
+
+### 标准件自动识别
+
+系统能通过模式匹配识别以下结构：
+
+- **齿轮**：识别齿数/模数 → 毛坯 + 齿廓 + 圆形阵列
+- **法兰**：识别孔数 → 底板 + 孔 + 圆形阵列
+- **旋转体**：花瓶/杯子/轴 → 截面轮廓 + Revolve
+- **阶梯轴**：多段直径 → 逐段堆叠
+- **阵列件**："N个X绕一圈" → 单体 + 圆形阵列
+
+---
+
+## 快速开始
 
 ### 前置条件
 
-| 依赖 | 版本要求 |
-|------|---------|
-| Siemens NX | 2412（含 NXOpen） |
-| Python | 3.10+ |
-| pip | 最新版 |
+- Siemens NX 2412（含 NXOpen）
+- Python 3.10+
 
 ### 安装
 
 ```bash
-# 1. 克隆仓库
 git clone https://github.com/pan140533/lang-to-nx.git
 cd lang-to-nx
-
-# 2. 安装 Python 依赖
 pip install -r requirements.txt
-
-# 3. 配置环境变量
 cp .env.example .env
 ```
 
-编辑 `.env` 文件，设置你的 NX 安装路径：
+编辑 `.env`，设置 NX 安装路径：
 
 ```ini
-# NX 安装路径
-NX_ROOT=D:\Siemens\NX2412
-RUN_JOURNAL_EXE=D:\Siemens\NX2412\NXBIN\run_journal.exe
-
-# 输出目录
+NX_ROOT=C:\Program Files\Siemens\NX
+RUN_JOURNAL_EXE=C:\Program Files\Siemens\NX\NXBIN\run_journal.exe
 OUTPUT_DIR=./output
 ```
 
-### 启动 MCP 服务器
+### 启动
 
 ```bash
-# 标准 MCP 模式（stdio，供 AI Agent 连接）
-python run.py
+python run.py                    # MCP Server（AI Agent 连接）
+python run.py --list-tools       # 列出所有工具
+python run.py --api              # HTTP API 模式
 ```
 
-### 其他模式
-
-```bash
-# HTTP API 模式（供前端/Webhook 调用）
-python run.py --api
-
-# 列出所有注册的工具
-python run.py --list-tools
-```
-
----
-
-## 🔧 MCP 工具清单
-
-| 工具 | 描述 |
-|------|------|
-| `nx_execute_plan` | **核心工具** — 接收一组建模步骤，生成 C# Journal 并执行 |
-| `nx_create_block` | 快捷创建方块体素 |
-| `nx_create_cylinder` | 快捷创建圆柱体素 |
-| `nx_create_cone` | 快捷创建圆锥体素 |
-| `nx_create_sphere` | 快捷创建球体体素 |
-| `nx_create_torus` | 快捷创建圆环体素 |
-
-### 支持的建模步骤
-
-`nx_execute_plan` 的 `steps` 数组支持以下操作：
-
-| 步骤工具 | 说明 |
-|----------|------|
-| `new_document` | 创建新文档（毫米） |
-| `create_sketch_on_plane` | 在指定平面创建草图 |
-| `close_sketch` | 关闭草图 |
-| `draw_line` | 画直线 |
-| `draw_rectangle` | 画矩形 |
-| `draw_circle` | 画圆 |
-| `draw_arc` | 画弧 |
-| `extrude` | 拉伸 |
-| `extrude_cut` | 拉伸切除 |
-| `revolve` | 旋转 |
-| `pattern_circular` | 圆形阵列 |
-| `pattern_rectangular` | 矩形阵列 |
-| `boolean_unite` | 布尔求和 |
-| `boolean_subtract` | 布尔求差 |
-| `edge_blend` | 边倒圆 |
-| `chamfer` | 倒角 |
-| `helix` | 螺旋线 |
-| `sweep` | 扫掠 |
-| `cylinder` | 圆柱体（体素） |
-| `block` | 方块体（体素） |
-| `save_document` | 保存文档 |
-
----
-
-## 📁 项目结构
-
-```
-lang-to-nx/
-├── backend/
-│   ├── __init__.py
-│   ├── config.py              # 配置管理（NX 路径等）
-│   ├── journal/
-│   │   ├── generator.py       # JSON 步骤 → C# 代码生成器
-│   │   └── nx_modeler.cs      # NXOpen C# API 封装
-│   └── mcp/
-│       ├── server.py          # MCP 服务器主入口
-│       ├── registry.py        # 工具注册中心
-│       ├── response.py        # 响应格式化
-│       ├── executor.py        # 执行器（subprocess 调用 run_journal）
-│       └── tools/
-│           ├── execute.py     # nx_execute_plan 工具
-│           └── primitives.py  # 体素快捷工具
-├── docs/                      # 项目文档
-│   ├── 01-项目介绍.md
-│   ├── 02-现状与问题.md
-│   └── 03-技术规范.md
-├── output/                    # 输出目录
-│   ├── models/                # 生成的 .prt 文件
-│   └── scripts/               # 生成的 .cs journal 脚本
-├── .env.example               # 环境变量模板
-├── .mcp.json                  # MCP 客户端配置示例
-├── CLAUDE.md                  # AI Agent 行为指令
-├── requirements.txt           # Python 依赖
-└── run.py                     # 启动入口
-```
-
----
-
-## 📋 使用示例
-
-### 与 Claude Desktop 集成
-
-在 Claude Desktop 的 MCP 配置中添加：
+### 接入 Claude Desktop
 
 ```json
 {
   "mcpServers": {
     "lang-to-nx": {
       "command": "python",
-      "args": ["D:\\projects\\lang-to-nx\\run.py"],
+      "args": ["path/to/lang-to-nx/run.py"],
       "env": {
-        "NX_ROOT": "D:\\Siemens\\NX2412",
-        "RUN_JOURNAL_EXE": "D:\\Siemens\\NX2412\\NXBIN\\run_journal.exe",
-        "OUTPUT_DIR": "D:\\projects\\lang-to-nx\\output"
+        "NX_ROOT": "C:\\Program Files\\Siemens\\NX",
+        "RUN_JOURNAL_EXE": "C:\\Program Files\\Siemens\\NX\\NXBIN\\run_journal.exe"
       }
     }
   }
 }
 ```
 
-### 场景：AI 生成一个齿轮
+---
 
-> **用户输入：** _"创建一个 17 齿的直齿轮，模数 1.5，厚度 15mm"_
+## 演示
 
-AI Agent 会自动规划：
-1. 创建圆柱体作为齿轮毛坯
-2. 在端面画一个齿廓草图
-3. 拉伸切除形成齿槽
-4. 圆形阵列 17 个齿槽
-5. 保存模型
+### 基础体素
+> "创建一个直径 60mm、高 20mm 的圆柱"
+> → `nx_create_cylinder(radius=30, height=20)` → `cylinder.prt`
+
+### 齿轮
+> "做一个 17 齿的直齿轮，模数 1.5，厚度 15mm"
+> → 圆柱毛坯 → 画齿廓 → 拉伸切除 → 圆形阵列×17 → `gear.prt`
+
+### 三叶风扇
+> "做一个三叶风扇，中心带轴孔"
+> → 中心轮毂 → 1片叶片 → 圆形阵列×3 → 中心孔切除 → `fan.prt`
 
 ---
 
-## 📄 文档
+## 项目结构
 
-- [01. 项目介绍](docs/01-项目介绍.md) — 项目定位、设计原则、与同类项目对比
-- [02. 现状与问题](docs/02-现状与问题.md) — 当前阶段、已知问题、下一步计划
-- [03. 技术规范](docs/03-技术规范.md) — 技术细节、坐标系统、注意事项
+```
+lang-to-nx/
+├── run.py                        # 启动入口
+├── CLAUDE.md                     # AI 行为指南（53种工具文档）
+├── .mcp.json                     # MCP 配置示例
+│
+├── backend/
+│   ├── config.py                 # 配置管理
+│   ├── mcp/                      # MCP 协议层
+│   │   ├── server.py             #   MCP Server
+│   │   ├── registry.py           #   工具注册
+│   │   ├── executor.py           #   执行引擎
+│   │   └── tools/
+│   │       ├── execute.py        #     nx_execute_plan（核心）
+│   │       └── primitives.py     #     体素快捷工具
+│   └── journal/                  # C# 代码生成
+│       ├── generator.py          #   JSON → C#（53个方法）
+│       └── nx_modeler.cs         #   NXOpen API（58个方法）
+│
+└── docs/                         # 项目文档
+```
 
 ---
 
-## 🗺️ 路线图
+## 当前状态
 
-- [x] MCP 协议层搭建
-- [x] 基础体素工具（方块、圆柱、圆锥、球体、圆环）
-- [x] C# Journal 代码生成器
-- [ ] 草图+拉伸/旋转流程稳定（调试中）
-- [ ] 错误恢复与重试机制
-- [ ] 前端 Three.js 3D 预览
-- [ ] 批量建模流水线
+| 模块 | 状态 | 说明 |
+|------|------|------|
+| MCP 协议层 | ✅ 完成 | 工具注册、自动发现、参数校验 |
+| C# NXOpen 封装 | ✅ 完成 | 58 个方法全部实现 |
+| Journal 生成器 | ✅ 完成 | 53 个 `_gen_` 方法 |
+| P0 Bug 修复 | ✅ 完成 | Revolve / Translate / Rotate |
+| 体素工具 | ✅ 完成 | 方块/圆柱/圆锥/球/圆环 |
+| NX 实测 | 🚧 ~25/58 | 剩余需 Journal 验证 |
+| Agent 管线 | 🔜 下一步 | 规则引擎 + LLM 回退 |
+| Web 前端 | 🔜 规划中 | Next.js + Three.js |
 
 ---
 
-## 📝 License
+## 设计原则
+
+1. **外部进程隔离** — NX 用完即退，不占 License，崩不影响主系统
+2. **MCP 标准协议** — 任何 MCP 客户端即插即用
+3. **分层解耦** — 协议层不涉及 CAD，执行层不涉及 AI
+4. **先分解再执行** — 识别阵列/镜像/旋转体，避免重复建模
+
+---
+
+## License
 
 MIT
-
----
-
-<p align="center">Made with ❤️ for the NX CAD community</p>
