@@ -16,6 +16,22 @@ public class NXModeler
   public void Init()
   { ses = Session.GetSession(); wp = ses.Parts.Work; dp = ses.Parts.Display; }
 
+  // NX 11 has no Feature.GetBodies(); filter GetEntities() for solid/sheet bodies.
+  public static Body[] BodiesOf(Feature f)
+  {
+    List<Body> found = new List<Body>();
+    if (f != null)
+    {
+      NXObject[] ents = null;
+      try { ents = f.GetEntities(); } catch (Exception) { ents = null; }
+      if (ents != null)
+      {
+        foreach (NXObject o in ents) { Body b = o as Body; if (b != null) found.Add(b); }
+      }
+    }
+    return found.ToArray();
+  }
+
   public void Tool_NewDocument(string name)
   {
     string tmp = outPath + "\\tmp_" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".prt";
@@ -86,54 +102,52 @@ public class NXModeler
   {
     Section sec = wp.Sections.CreateSection(0.0095, 0.01, 0.5);
     sec.SetAllowedEntityTypes(Section.AllowTypes.OnlyCurves);
-    SelectionIntentRuleOptions ro = wp.ScRuleFactory.CreateRuleOptions();
-    ro.SetSelectedFromInactive(false);
+    
     Point3d seed = CalcSeed();
-    RegionBoundaryRule br = wp.ScRuleFactory.CreateRuleRegionBoundary(curSketch, curCurves.ToArray(), seed, 0.01, ro);
-    ro.Dispose(); sec.AllowSelfIntersection(true);
+    RegionBoundaryRule br = wp.ScRuleFactory.CreateRuleRegionBoundary(curSketch, curCurves.ToArray(), seed, 0.01);
+    sec.AllowSelfIntersection(true);
     sec.AddToSection(new SelectionIntentRule[]{br}, null, null, null, seed, Section.Mode.Create, false);
     ExtrudeBuilder eb = wp.Features.CreateExtrudeBuilder(null);
     eb.Section = sec;
     eb.Direction = wp.Directions.CreateDirection(curSketch, Sense.Forward, SmartObject.UpdateOption.WithinModeling);
     eb.BooleanOperation.SetTargetBodies(new Body[0]);
     eb.BooleanOperation.Type = BooleanOperation.BooleanType.Create;
-    eb.Limits.StartExtend.Value.SetFormula(start.ToString());
-    eb.Limits.EndExtend.Value.SetFormula((start + len).ToString());
+    eb.Limits.StartExtend.Value.RightHandSide = start.ToString();
+    eb.Limits.EndExtend.Value.RightHandSide = (start + len).ToString();
     eb.AllowSelfIntersectingSection(true);
     Feature f = eb.CommitFeature(); eb.Destroy();
     _lastFeature = f;
-    if (f.GetBodies().Length > 0) { _previousBody = curBody; curBody = f.GetBodies()[0]; }
+    if (BodiesOf(f).Length > 0) { _previousBody = curBody; curBody = BodiesOf(f)[0]; }
   }
 
   public void Tool_ExtrudeCut(double len)
   {
     Section sec = wp.Sections.CreateSection(0.0095, 0.01, 0.5);
     sec.SetAllowedEntityTypes(Section.AllowTypes.OnlyCurves); sec.DistanceTolerance = 0.01;
-    SelectionIntentRuleOptions ro = wp.ScRuleFactory.CreateRuleOptions();
-    ro.SetSelectedFromInactive(false); sec.AllowSelfIntersection(true);
+    sec.AllowSelfIntersection(true);
     Point3d seed = CalcSeed();
     bool allArcs = true;
     foreach (ICurve cv in curCurves) { if (!(cv is Arc)) { allArcs = false; break; } }
     if (allArcs && curCurves.Count > 1) {
       foreach (ICurve cv in curCurves) {
         Arc a = cv as Arc; Point3d aseed = (a != null) ? a.CenterPoint : CalcSeed();
-        var br = wp.ScRuleFactory.CreateRuleRegionBoundary(curSketch, new ICurve[]{cv}, aseed, 0.01, ro);
+        var br = wp.ScRuleFactory.CreateRuleRegionBoundary(curSketch, new ICurve[]{cv}, aseed, 0.01);
         sec.AddToSection(new SelectionIntentRule[]{br}, null, null, null, aseed, Section.Mode.Create, false);
       }
     } else {
-      var br = wp.ScRuleFactory.CreateRuleRegionBoundary(curSketch, curCurves.ToArray(), seed, 0.01, ro);
+      var br = wp.ScRuleFactory.CreateRuleRegionBoundary(curSketch, curCurves.ToArray(), seed, 0.01);
       sec.AddToSection(new SelectionIntentRule[]{br}, null, null, null, seed, Section.Mode.Create, false);
     }
-    ro.Dispose();
+    
     ExtrudeBuilder eb2 = wp.Features.CreateExtrudeBuilder(null);
     eb2.Section = sec;
     eb2.Direction = wp.Directions.CreateDirection(curSketch, Sense.Forward, SmartObject.UpdateOption.WithinModeling);
     eb2.BooleanOperation.Type = BooleanOperation.BooleanType.Create;
-    eb2.Limits.StartExtend.Value.SetFormula("0"); eb2.Limits.EndExtend.Value.SetFormula(len.ToString());
+    eb2.Limits.StartExtend.Value.RightHandSide = "0"; eb2.Limits.EndExtend.Value.RightHandSide = len.ToString();
     eb2.AllowSelfIntersectingSection(true);
     Feature ft = eb2.CommitFeature(); eb2.Destroy();
-    if (curBody != null && ft.GetBodies().Length > 0) {
-      Body toolBody = ft.GetBodies()[0];
+    if (curBody != null && BodiesOf(ft).Length > 0) {
+      Body toolBody = BodiesOf(ft)[0];
       var boolB = wp.Features.CreateBooleanBuilder(null);
       boolB.Operation = Feature.BooleanType.Subtract; boolB.Target = curBody;
       ScCollector coll = wp.ScCollectors.CreateCollector();
@@ -150,11 +164,10 @@ public class NXModeler
       // 创建 Section（和 Extrude 相同的方式，已验证可编译）
       Section sec = wp.Sections.CreateSection(0.0095, 0.01, 0.5);
       sec.SetAllowedEntityTypes(Section.AllowTypes.OnlyCurves);
-      SelectionIntentRuleOptions ro = wp.ScRuleFactory.CreateRuleOptions();
-      ro.SetSelectedFromInactive(false);
+      
       Point3d seed = CalcSeed();
-      RegionBoundaryRule br = wp.ScRuleFactory.CreateRuleRegionBoundary(curSketch, curCurves.ToArray(), seed, 0.01, ro);
-      ro.Dispose();
+      RegionBoundaryRule br = wp.ScRuleFactory.CreateRuleRegionBoundary(curSketch, curCurves.ToArray(), seed, 0.01);
+      
       sec.AllowSelfIntersection(true);
       sec.AddToSection(new SelectionIntentRule[]{br}, null, null, null, seed, Section.Mode.Create, false);
 
@@ -165,11 +178,11 @@ public class NXModeler
           SmartObject.UpdateOption.WithinModeling);
 
       rb.BooleanOperation.Type = BooleanOperation.BooleanType.Create;
-      rb.Limits.StartExtend.Value.SetFormula("0");
-      rb.Limits.EndExtend.Value.SetFormula(angle.ToString());
+      rb.Limits.StartExtend.Value.RightHandSide = "0";
+      rb.Limits.EndExtend.Value.RightHandSide = angle.ToString();
       Feature fr = rb.CommitFeature(); rb.Destroy();
       _lastFeature = fr;
-      if (fr.GetBodies().Length > 0) curBody = fr.GetBodies()[0];
+      if (BodiesOf(fr).Length > 0) curBody = BodiesOf(fr)[0];
       Console.WriteLine("[OK] Revolve: {0}°", angle);
     }
     catch (Exception ex) { Console.WriteLine("[!] Revolve failed: {0}", ex.Message); }
@@ -319,18 +332,17 @@ public class NXModeler
       TubeBuilder tb = wp.Features.CreateTubeBuilder(null);
       Section guideSec = wp.Sections.CreateSection(0.0095, 0.01, 0.5);
       guideSec.SetAllowedEntityTypes(Section.AllowTypes.OnlyCurves);
-      SelectionIntentRuleOptions ro = wp.ScRuleFactory.CreateRuleOptions();
-      ro.SetSelectedFromInactive(false);
+      
       CurveDumbRule cr = wp.ScRuleFactory.CreateRuleCurveDumb(new Curve[]{guideArc});
       guideSec.AddToSection(new SelectionIntentRule[]{cr}, guideArc, null, null,
           new Point3d(majorR, 0, 0), Section.Mode.Create, false);
-      ro.Dispose();
+      
       tb.OuterDiameter.RightHandSide = (minorR * 2.0).ToString();
 
       Feature f = tb.CommitFeature();
       tb.Destroy();
       _lastFeature = f;
-      if (f.GetBodies().Length > 0) { _previousBody = curBody; curBody = f.GetBodies()[0]; }
+      if (BodiesOf(f).Length > 0) { _previousBody = curBody; curBody = BodiesOf(f)[0]; }
       Console.WriteLine("[OK] Torus: major={0}, minor={1}", majorR, minorR);
     }
     catch (Exception ex)
@@ -381,29 +393,26 @@ public class NXModeler
       // 2. 创建引导线 Section
       Section guideSec = wp.Sections.CreateSection(0.0095, 0.01, 0.5);
       guideSec.SetAllowedEntityTypes(Section.AllowTypes.OnlyCurves);
-      SelectionIntentRuleOptions ro = wp.ScRuleFactory.CreateRuleOptions();
-      ro.SetSelectedFromInactive(false);
+      
       CurveDumbRule guideRule = wp.ScRuleFactory.CreateRuleCurveDumb(new Curve[]{guideLine});
-      ro.Dispose();
+      
       guideSec.AddToSection(new SelectionIntentRule[]{guideRule}, null, null, null,
           new Point3d(0,0,0), Section.Mode.Create, false);
 
       // 3. 创建截面 Section（从当前草图）
       Section profileSec = wp.Sections.CreateSection(0.0095, 0.01, 0.5);
       profileSec.SetAllowedEntityTypes(Section.AllowTypes.OnlyCurves);
-      SelectionIntentRuleOptions ro2 = wp.ScRuleFactory.CreateRuleOptions();
-      ro2.SetSelectedFromInactive(false);
+      
       Point3d seed = CalcSeed();
-      RegionBoundaryRule br = wp.ScRuleFactory.CreateRuleRegionBoundary(curSketch, curCurves.ToArray(), seed, 0.01, ro2);
-      ro2.Dispose();
+      RegionBoundaryRule br = wp.ScRuleFactory.CreateRuleRegionBoundary(curSketch, curCurves.ToArray(), seed, 0.01);
+      
       profileSec.AllowSelfIntersection(false);
       profileSec.AddToSection(new SelectionIntentRule[]{br}, null, null, null,
           seed, Section.Mode.Create, false);
 
       // 4. 创建 SweptBuilder1
       ses.ActiveSketch.Deactivate(Sketch.ViewReorient.True, Sketch.UpdateLevel.Model);
-      NXOpen.Features.Swept nullSwept = null;
-      var builder = wp.Features.FreeformSurfaceCollection.CreateSweptBuilder1(nullSwept);
+      var builder = wp.Features.CreateSweptBuilder(null);
       builder.G0Tolerance = 0.01;
       builder.G1Tolerance = 0.5;
       builder.PreserveShapeOption = false;
@@ -429,7 +438,7 @@ public class NXModeler
 
       Swept swept = (Swept)result;
       _lastFeature = swept;
-      if (swept.GetBodies().Length > 0) { _previousBody = curBody; curBody = swept.GetBodies()[0]; }
+      if (BodiesOf(swept).Length > 0) { _previousBody = curBody; curBody = BodiesOf(swept)[0]; }
       Console.WriteLine("[OK] Sweep: {0} path points, profile from sketch", pathPoints.Length);
     }
     catch (Exception ex) { Console.WriteLine("[!] Sweep failed: {0}", ex.Message); }
@@ -461,7 +470,7 @@ public class NXModeler
       bb.ToolBodyCollector = coll;
       Feature f = bb.CommitFeature(); bb.Destroy();
       _lastFeature = f;
-      if (f.GetBodies().Length > 0) curBody = f.GetBodies()[0];
+      if (BodiesOf(f).Length > 0) curBody = BodiesOf(f)[0];
       Console.WriteLine("[OK] BooleanUnite");
     }
     catch (Exception ex) { Console.WriteLine("[!] BooleanUnite failed: {0}", ex.Message); }
@@ -483,7 +492,7 @@ public class NXModeler
       bb.ToolBodyCollector = coll;
       Feature f = bb.CommitFeature(); bb.Destroy();
       _lastFeature = f;
-      if (f.GetBodies().Length > 0) curBody = f.GetBodies()[0];
+      if (BodiesOf(f).Length > 0) curBody = BodiesOf(f)[0];
       Console.WriteLine("[OK] BooleanSubtract");
     }
     catch (Exception ex) { Console.WriteLine("[!] BooleanSubtract failed: {0}", ex.Message); }
@@ -505,7 +514,7 @@ public class NXModeler
       bb.ToolBodyCollector = coll;
       Feature f = bb.CommitFeature(); bb.Destroy();
       _lastFeature = f;
-      if (f.GetBodies().Length > 0) curBody = f.GetBodies()[0];
+      if (BodiesOf(f).Length > 0) curBody = BodiesOf(f)[0];
       Console.WriteLine("[OK] BooleanIntersect");
     }
     catch (Exception ex) { Console.WriteLine("[!] BooleanIntersect failed: {0}", ex.Message); }
@@ -530,9 +539,8 @@ public class NXModeler
       if (selEdges.Count == 0) return;
       var fb = wp.Features.CreateEdgeBlendBuilder(null);
       ScCollector coll = wp.ScCollectors.CreateCollector();
-      SelectionIntentRuleOptions ro = wp.ScRuleFactory.CreateRuleOptions(); ro.SetSelectedFromInactive(false);
-      coll.ReplaceRules(new SelectionIntentRule[]{wp.ScRuleFactory.CreateRuleEdgeDumb(selEdges.ToArray(), ro)}, false);
-      ro.Dispose();
+      coll.ReplaceRules(new SelectionIntentRule[]{wp.ScRuleFactory.CreateRuleEdgeDumb(selEdges.ToArray())}, false);
+      
       fb.NonCliffEdges = coll;
       fb.AddChainset(coll, radius.ToString());
       Feature f = fb.CommitFeature(); fb.Destroy();
@@ -555,10 +563,9 @@ public class NXModeler
         if (removeFaceIndex < all.Length)
         {
           var coll = wp.ScCollectors.CreateCollector();
-          SelectionIntentRuleOptions ro = wp.ScRuleFactory.CreateRuleOptions();
-          ro.SetSelectedFromInactive(false);
-          FaceDumbRule rule = wp.ScRuleFactory.CreateRuleFaceDumb(new Face[]{all[removeFaceIndex]}, ro);
-          ro.Dispose();
+          
+          FaceDumbRule rule = wp.ScRuleFactory.CreateRuleFaceDumb(new Face[]{all[removeFaceIndex]});
+          
           coll.ReplaceRules(new SelectionIntentRule[]{rule}, false);
           builder.RemovedFacesCollector = coll;
         }
@@ -733,8 +740,7 @@ public class NXModeler
     try
     {
       if (sections == null || sections.Length < 2) return;
-      Feature nullFeature = null;
-      var builder = wp.Features.FreeformSurfaceCollection.CreateThroughCurvesBuilder1(nullFeature);
+      var builder = wp.Features.CreateThroughCurvesBuilder(null);
       builder.PreserveShape = false;
       foreach (string skName in sections)
       {
@@ -742,13 +748,12 @@ public class NXModeler
         if (skf == null) continue;
         Section sec = wp.Sections.CreateSection(0.0095, 0.01, 0.5);
         sec.SetAllowedEntityTypes(Section.AllowTypes.CurvesAndPoints);
-        SelectionIntentRuleOptions ro = wp.ScRuleFactory.CreateRuleOptions(); ro.SetSelectedFromInactive(false);
-        sec.AddToSection(new SelectionIntentRule[]{wp.ScRuleFactory.CreateRuleCurveFeature(new Feature[]{skf}, null, ro)}, null, null, null, new Point3d(0,0,0), Section.Mode.Create, false);
-        ro.Dispose();
+        sec.AddToSection(new SelectionIntentRule[]{wp.ScRuleFactory.CreateRuleCurveFeature(new Feature[]{skf}, null)}, null, null, null, new Point3d(0,0,0), Section.Mode.Create, false);
+        
         builder.SectionsList.Append(sec);
       }
       Feature f = builder.CommitFeature(); builder.Destroy(); _lastFeature = f;
-      if (f.GetBodies().Length > 0) curBody = f.GetBodies()[0];
+      if (BodiesOf(f).Length > 0) curBody = BodiesOf(f)[0];
       Console.WriteLine("[OK] ThroughCurves: {0} sections", sections.Length);
     }
     catch (Exception ex) { Console.WriteLine("[!] ThroughCurves failed: {0}", ex.Message); }
@@ -791,10 +796,9 @@ public class NXModeler
         NXObject obj = wp.Features.FindObject(refName);
         if (obj is ICurve)
         {
-          SelectionIntentRuleOptions ro = wp.ScRuleFactory.CreateRuleOptions();
-          ro.SetSelectedFromInactive(false);
+          
           // BoundedPlane C# API 需要进一步 Journal 确认
-          ro.Dispose();
+          
         }
       }
       Feature f = builder.CommitFeature(); builder.Destroy();
@@ -837,7 +841,7 @@ public class NXModeler
       builder.PartialOption = true;
       builder.MaximumExcludedObjects = 10;
       builder.RemoveProblemVerticesOption = true;
-      builder.Radius.SetFormula(distance.ToString());
+      builder.Radius.RightHandSide = distance.ToString();
       builder.ApproxOption = true;
       builder.SetOrientationMethod(
           OffsetSurfaceBuilder.OrientationMethodType.UseExistingNormals);
@@ -849,10 +853,9 @@ public class NXModeler
 
       // 选择所有面（或通过 faceRef 指定）
       ScCollector faceColl = wp.ScCollectors.CreateCollector();
-      SelectionIntentRuleOptions ro = wp.ScRuleFactory.CreateRuleOptions();
-      ro.SetSelectedFromInactive(false);
-      FaceBodyRule bodyRule = wp.ScRuleFactory.CreateRuleFaceBody(curBody, ro);
-      ro.Dispose();
+      
+      FaceBodyRule bodyRule = wp.ScRuleFactory.CreateRuleFaceBody(curBody);
+      
       faceColl.ReplaceRules(new SelectionIntentRule[]{bodyRule}, false);
       faceSet.FaceCollector = faceColl;
 
@@ -934,9 +937,8 @@ public class NXModeler
       foreach (int i in faceIndices) if (i >= 0 && i < all.Length) sel.Add(all[i]);
       if (sel.Count == 0) return;
       var b = wp.Features.CreateDeleteFaceBuilder(null);
-      SelectionIntentRuleOptions ro = wp.ScRuleFactory.CreateRuleOptions(); ro.SetSelectedFromInactive(false);
-      b.FaceCollector.ReplaceRules(new SelectionIntentRule[]{wp.ScRuleFactory.CreateRuleFaceDumb(sel.ToArray(), ro)}, false);
-      ro.Dispose(); b.Heal = true;
+      b.FaceCollector.ReplaceRules(new SelectionIntentRule[]{wp.ScRuleFactory.CreateRuleFaceDumb(sel.ToArray())}, false);
+      b.Heal = true;
       Feature f = b.CommitFeature(); b.Destroy(); _lastFeature = f;
       Console.WriteLine("[OK] DeleteFace: {0} faces", sel.Count);
     }

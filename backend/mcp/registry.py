@@ -44,14 +44,16 @@ class _ToolDef:
             if pdef.get("required", True):
                 required.append(pname)
 
+        # required 为空时不要把键写出来：JSON Schema 里 "required": null 是非法的，
+        # 严格的客户端会直接报错。
+        schema: dict[str, Any] = {"type": "object", "properties": properties}
+        if required:
+            schema["required"] = required
+
         return {
             "name": self.name,
             "description": self.description,
-            "inputSchema": {
-                "type": "object",
-                "properties": properties,
-                "required": required if required else None,
-            },
+            "inputSchema": schema,
         }
 
 

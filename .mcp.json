@@ -1,14 +1,15 @@
 {
   "mcpServers": {
     "lang-to-nx": {
-      "command": "python",
+      "command": "D:\\Program Files\\Python314\\python.exe",
       "args": [
-        "E:\\NX\\Lang-to-NX-MCP\\run.py"
+        "D:\\Guo-Code\\lang-to-nx\\run.py"
       ],
       "env": {
-        "NX_ROOT": "E:\\NX\\NX",
-        "RUN_JOURNAL_EXE": "E:\\NX\\NX\\NXBIN\\run_journal.exe",
-        "OUTPUT_DIR": "E:\\NX\\Lang-to-NX-MCP\\output"
+        "NX_ROOT": "D:\\Program Files\\Siemens\\NX 11.0",
+        "RUN_JOURNAL_EXE": "D:\\Program Files\\Siemens\\NX 11.0\\NXBIN\\run_journal.exe",
+        "OUTPUT_DIR": "D:\\Guo-Code\\lang-to-nx\\output",
+        "PYTHONIOENCODING": "utf-8"
       }
     }
   }

@@ -57,11 +57,19 @@ def main():
     args = parser.parse_args()
 
     # 加载 .env
-    from dotenv import load_dotenv
+    # backend.config 在 import 时就自行加载 .env（不依赖第三方库），
+    # 这里保留 python-dotenv 只是为了兼容旧行为；未安装时不再中断启动。
     env_path = Path(__file__).parent / ".env"
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        load_dotenv = None
     if env_path.exists():
-        load_dotenv(env_path)
-        print(f"已加载配置: {env_path}")
+        if load_dotenv is not None:
+            load_dotenv(env_path)
+        # 必须走 stderr：不带参数运行时 stdout 就是 MCP 的 JSON-RPC 通道，
+        # 往里 print 一行非 JSON 内容会让客户端解析失败。
+        print(f"已加载配置: {env_path}", file=sys.stderr)
 
     if args.api:
         run_api()
@@ -72,10 +80,13 @@ def main():
         from backend.config import config
         errors = config.validate()
         if errors:
-            print("⚠️  配置检查发现以下问题:")
+            # 同样走 stderr —— 这个分支接下来就要启动 MCP，stdout 不能被占用
+            # 不要用 ⚠ 这类 GBK 编码不了的符号：中文控制台上会抛 UnicodeEncodeError，
+            # 偏偏这时候用户最需要看到错误信息
+            print("配置检查发现以下问题:", file=sys.stderr)
             for e in errors:
-                print(f"  - {e}")
-            print("请检查 .env 文件或环境变量\n")
+                print(f"  - {e}", file=sys.stderr)
+            print("请检查 .env 文件或环境变量\n", file=sys.stderr)
 
         run_mcp()
 

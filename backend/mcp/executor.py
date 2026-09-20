@@ -61,6 +61,29 @@ def generate_output_path(extension: str = ".prt", tag: str = "model") -> tuple[s
     return fname, full
 
 
+def failure_detail(result: dict[str, Any], limit: int = 800) -> str:
+    """从 execute_journal 的结果里还原一条可读的失败原因。
+
+    为什么不能只看 stderr：run_journal 把自己的结论（"Compilation failed"）写到
+    stderr，而真正的 C# 诊断（"Line 42: ..." 那一批）在 stdout。只看 stderr 会把
+    每次编译失败都压缩成一句 "Compilation failed"，等于没信息。
+    """
+    stderr = (result.get("error") or "").strip()
+    stdout = (result.get("output") or "").strip()
+
+    parts: list[str] = []
+    if stderr:
+        parts.append(stderr)
+    if stdout:
+        lines = stdout.splitlines()
+        diag = [ln for ln in lines if ln.strip().startswith("Line ")]
+        tail = "\n".join((diag or lines)[-25:])
+        if tail and tail not in stderr:
+            parts.append(tail)
+
+    return ("\n".join(parts).strip() or "未生成结果文件（NX 无输出）")[:limit]
+
+
 def execute_journal(journal_cs_code: str, tag: str = "script") -> dict[str, Any]:
     """执行一段 C# Journal 代码
 

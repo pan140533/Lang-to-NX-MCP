@@ -2,7 +2,10 @@
 # 安装: pip install -r requirements.txt
 
 # ── MCP 协议层 ──
-mcp>=1.0.0
+# 必须 >=2：backend/mcp/server.py 用的是 2.x 的回调式注册
+# (Server(name, on_list_tools=..., on_call_tool=...))。
+# 1.x 的 @server.list_tools() / @server.call_tool() 装饰器在 2.x 已被移除。
+mcp>=2.0.0
 
 # ── Web 框架（可选，用于前端 API） ──
 fastapi>=0.100.0

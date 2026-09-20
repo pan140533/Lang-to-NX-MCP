@@ -18,6 +18,36 @@ def _env(key: str, default: str = "") -> str:
     return os.environ.get(key, default)
 
 
+def _load_env_file(path: Path) -> None:
+    """把 .env 里的键值对注入 os.environ（已存在的环境变量优先，不覆盖）。
+
+    为什么需要它：之前只有 run.py 会在启动时调用 python-dotenv 加载 .env，
+    任何直接 `import backend.config` 的入口（FastAPI、脚本、测试）都会静默退回
+    默认的 `C:\\Program Files\\Siemens\\NX`，导致 run_journal.exe 找不到。
+    这里做一个不依赖第三方库的最小解析器，python-dotenv 缺失时也能工作。
+    """
+    try:
+        content = path.read_text(encoding="utf-8-sig")
+    except (OSError, UnicodeDecodeError):
+        return
+
+    for raw in content.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+            value = value[1:-1]
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+load_dotenv_file = _load_env_file  # 兼容别名
+_load_env_file(Path(__file__).resolve().parent.parent / ".env")
+
+
 @dataclass
 class Config:
     # ── NX Installation ──

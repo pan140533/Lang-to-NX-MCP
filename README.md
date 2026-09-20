@@ -1,9 +1,9 @@
 <p align="center">
   <img src="https://img.shields.io/badge/status-active-success" alt="Status">
-  <img src="https://img.shields.io/badge/NX-2412-blue" alt="NX">
+  <img src="https://img.shields.io/badge/NX-11.0%20(deployed)%20%7C%202412%20(upstream)-blue" alt="NX">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
   <img src="https://img.shields.io/badge/C%23-5.0-purple" alt="C#">
-  <img src="https://img.shields.io/badge/MCP-1.0-orange" alt="MCP">
+  <img src="https://img.shields.io/badge/MCP-2.x-orange" alt="MCP">
 </p>
 
 <h1 align="center">Lang-to-NX</h1>
@@ -147,15 +147,24 @@ lang-to-nx/
 ├── backend/
 │   ├── config.py             # 配置管理
 │   ├── mcp/                  # MCP 协议层
-│   │   ├── server.py
-│   │   ├── registry.py
-│   │   ├── executor.py
+│   │   ├── server.py         #   MCP Server（stdio，mcp 2.x 回调式注册）
+│   │   ├── registry.py       #   @mcp_tool 装饰器 + ToolRegistry
+│   │   ├── response.py       #   ToolResult / ToolError
+│   │   ├── executor.py       #   生成 C# + subprocess 调 run_journal.exe
 │   │   └── tools/
-│   │       ├── execute.py    #   nx_execute_plan（核心）
-│   │       └── primitives.py #   体素快捷工具
+│   │       ├── execute.py     #   nx_execute_plan / nx_validate_plan（核心）
+│   │       ├── primitives.py  #   体素快捷工具
+│   │       ├── assembly.py    #   nx_add_component（装配）
+│   │       ├── expressions.py #   nx_update_expressions（改参）
+│   │       ├── flatten.py     #   nx_assemble_to_model（装配拍平成单一部件）
+│   │       └── composite.py   #   nx_assemble_and_update（复制→改参→拍平→装配→拍平）
 │   └── journal/              # C# 代码生成
 │       ├── generator.py      #   JSON → C#（53 方法）
 │       └── nx_modeler.cs     #   NXOpen API（58 方法）
+│
+├── output/                   # 输出目录
+│   ├── models/               #   .prt 模型 + Journal 日志
+│   └── scripts/              #   生成的 .cs Journal
 │
 └── docs/
 ```
@@ -166,13 +175,16 @@ lang-to-nx/
 
 | 模块 | 状态 |
 |------|------|
-| MCP 协议层 | ✅ 完成 |
+| MCP 协议层 | ✅ 完成（2026-09-20 移植到 mcp 2.x；此前在 2.x 下启动即崩） |
+| 装配 / 改参链路 | ✅ 完成（2026-09-20 新增，NX 11.0 实测） |
 | C# NXOpen 封装（58 方法） | ✅ 完成 |
 | Journal 生成器（53 方法） | ✅ 完成 |
-| P0 Bug 修复（Revolve/Translate/Rotate） | ✅ 完成 |
+| P0 Bug 修复（Revolve/Translate/Rotate） | ✅ 完成（上游 NX 2412 时期） |
 | NX 实测验证 | 🚧 ~25/58 |
-| Agent 管线 | 🔜 下一步 |
-| Web 前端 | 🔜 规划中 |
+| Agent 管线 | 🔜 下一步（规划中，尚未实现） |
+| Web 前端 / FastAPI (`api.py`) | 🔜 规划中，尚未实现 |
+
+> **环境**：上游基于 NX 2412；本 checkout 部署在 **NX 11.0**。MCP SDK 需 **2.x**。
 
 ---
 

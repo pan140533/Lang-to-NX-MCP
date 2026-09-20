@@ -14,7 +14,7 @@ import json
 from typing import Any
 
 from backend.mcp.registry import mcp_tool
-from backend.mcp.executor import execute_journal, generate_output_path
+from backend.mcp.executor import execute_journal, failure_detail, generate_output_path
 from backend.mcp.response import ToolResult, ToolError
 from backend.journal.generator import JournalGenerator
 
@@ -103,7 +103,7 @@ async def nx_execute_plan(steps: list[dict], description: str = "") -> ToolResul
     else:
         return ToolError(
             "EXECUTION_FAILED",
-            f"NX 执行失败: {result['error']}",
+            f"NX 执行失败: {failure_detail(result)}",
             "检查 NX 安装和工具参数",
         )
 
