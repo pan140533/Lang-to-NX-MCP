@@ -28,6 +28,11 @@
 AI 理解意图 → 识别圆形阵列模式 → 规划步骤 → 生成 C# → NX 执行 → 风扇.prt
 ```
 
+> [!IMPORTANT]
+> **运行前必须手动配置，程序不会自动去找 NX。**
+> 本项目依赖本机已安装的 **Siemens NX 2412**。NX 装在哪只有你知道——请把 `.env.example` 复制为 `.env`，**手动填写 `NX_ROOT`** 指向你自己的 NX 安装目录。
+> 没填或填错，程序启动后每条建模指令都会失败（报 `WinError 2 系统找不到指定的文件`）。详见下方「配置（必须手动完成）」。
+
 ---
 
 ## 解决什么问题？
@@ -103,8 +108,9 @@ Siemens NX 是工业级闭源 CAD 软件，广泛用于航空航天、汽车制�
 
 ### 前置条件
 
-- Siemens NX 2412（含 NXOpen）
+- **Siemens NX 2412**（含 NXOpen，且本机有可用 License）—— 必须已安装，本项目不携带 NX
 - Python 3.10+
+- Node.js 18+（前端）
 
 ### 安装
 
@@ -115,21 +121,48 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-编辑 `.env`，设置 NX 安装路径：
+### 配置（必须手动完成）
+
+`.env` 不会随仓库上传（已在 `.gitignore` 中忽略），必须由你自己创建并填写。
+
+1. 把 `.env.example` 复制成 `.env`
+2. 用文本编辑器打开 `.env`，把 `NX_ROOT` 改成**你自己机器上**的 NX 安装目录
+
+| 变量 | 必填 | 说明 |
+|---|---|---|
+| `NX_ROOT` | ✅ **必填** | NX 安装目录。该目录下必须存在 `NXBIN\run_journal.exe` |
+| `LLM_API_KEY` | 可选 | 兼容 OpenAI 协议的 Key；当前版步骤规划由规则引擎完成，留空不影响建模 |
+| `OUTPUT_DIR` | 可选 | 输出目录，默认 `output`（.prt 实际落在 `output/models/`） |
+| `SESSION_DIR` | 可选 | 会话数据目录，默认 `sessions` |
+
+**怎么找到你的 `NX_ROOT`：**
+
+1. 找到你机器上装 NX 的目录（例如 `C:\Program Files\Siemens\NX 2412` 或 `E:\NX\NX`）
+2. 进入它下面的 `NXBIN`，确认里面有 `run_journal.exe`
+3. 把 `NXBIN` 的**上一级**目录写进 `NX_ROOT`（注意不要带 `\NXBIN`）
 
 ```ini
-NX_ROOT=C:\Program Files\Siemens\NX
-RUN_JOURNAL_EXE=C:\Program Files\Siemens\NX\NXBIN\run_journal.exe
-OUTPUT_DIR=./output
+# .env 示例
+NX_ROOT=E:\NX\NX
+OUTPUT_DIR=output
+SESSION_DIR=sessions
 ```
+
+> 程序**不会**扫描磁盘自动定位 NX：机器磁盘大时全盘搜索既慢又不可靠，所以这一步必须由你手动完成。
+> 路径没配或配错时，接口会直接返回「找不到 run_journal.exe」并提示检查 `NX_ROOT`，而不是只丢一个 `WinError 2`。
 
 ### 启动
 
 ```bash
-python run.py                    # MCP Server（AI Agent 连接）
-python run.py --list-tools       # 列出所有工具
-python run.py --api              # HTTP API 模式
+python run.py
 ```
+
+该命令会同时启动：
+
+- 后端 FastAPI → http://localhost:8000
+- 前端 Next.js → http://localhost:3000
+
+浏览器打开 http://localhost:3000 使用。
 
 ### 接入 Claude Desktop
 

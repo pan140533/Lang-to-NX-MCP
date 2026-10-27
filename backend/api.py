@@ -68,11 +68,21 @@ def _get_agent_pipeline(session_id: str):
         name = pipeline.current_output_name or f"plan_{session_id}"
         gen = JournalGenerator(part_name=name)
         jpath = gen.save_journal(code)
-        result = subprocess.run(
-            [config.NX_EXE, os.path.abspath(jpath)],
-            capture_output=True, text=True, timeout=120,
-            encoding='gbk', errors='ignore'
-        )
+        try:
+            result = subprocess.run(
+                [config.NX_EXE, os.path.abspath(jpath)],
+                capture_output=True, text=True, timeout=120,
+                encoding='gbk', errors='ignore'
+            )
+        except FileNotFoundError:
+            return False, {
+                "error": (
+                    f"找不到 run_journal.exe：{config.NX_EXE}。"
+                    "请检查项目根目录 .env 里的 NX_ROOT 是否指向你的 NX 安装目录"
+                    "（该目录下应有 NXBIN\\run_journal.exe）。"
+                    "程序不会自动搜索磁盘，这一步必须手动配置。"
+                )
+            }
         if result.returncode == 0:
             part_file = os.path.join(OUTPUT_DIR, f"{name}.prt")
             return True, {"files": [part_file], "features": []}

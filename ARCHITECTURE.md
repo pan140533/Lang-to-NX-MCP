@@ -374,18 +374,24 @@ NX 建模结果
 
 ### 必需环境
 
-1. **NX 2412** — Siemens NX 软件
+1. **NX 2412** — Siemens NX 软件（含 NXOpen，且本机有可用 License）
 2. **Python 3.10+** — 后端运行环境
 3. **Node.js 18+** — 前端运行环境
-4. **DeepSeek API Key** — LLM 服务
+4. **LLM API Key（可选）** — 当前版规划由规则引擎完成，不填也能建模
 
-`.env` 示例：
+`.env` 必须先手动创建（`.env` 已在 `.gitignore` 中，不会随仓库发布）。
+**`NX_ROOT` 必须手动填写**——程序不会扫描磁盘自动定位 NX：
+
 ```
-DEEPSEEK_API_KEY=your_api_key
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-chat
-NX_PATH=C:\Program Files\Siemens\NX 2412
-RUN_JOURNAL_PATH=C:\Program Files\Siemens\NX 2412\NXBIN\run_journal.exe
+LLM_API_KEY=your_api_key
+LLM_BASE_URL=https://api.deepseek.com
+LLM_MODEL=deepseek-chat
+
+# 必填：你的 NX 安装目录（该目录下应有 NXBIN\run_journal.exe）
+NX_ROOT=E:\NX\NX
+
+OUTPUT_DIR=output
+SESSION_DIR=sessions
 ```
 
 ---
