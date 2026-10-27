@@ -6,9 +6,13 @@ NX 执行通过 run_journal.exe + C#，不需要 Python NXOpen 环境。
 """
 
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
-load_dotenv()
+# 固定从项目根目录读取 .env，保证被 MCP 客户端从任意工作目录拉起时都能读到。
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
 
 # ── LLM 配置（默认 DeepSeek）──
 LLM_CONFIG = {
