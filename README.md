@@ -173,8 +173,7 @@ python run.py
       "command": "python",
       "args": ["path/to/Lang-to-NX-MCP/run.py"],
       "env": {
-        "NX_ROOT": "C:\\Program Files\\Siemens\\NX",
-        "RUN_JOURNAL_EXE": "C:\\Program Files\\Siemens\\NX\\NXBIN\\run_journal.exe"
+        "NX_ROOT": "C:\\Program Files\\Siemens\\NX"
       }
     }
   }
