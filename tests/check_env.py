@@ -52,7 +52,8 @@ print(f"\n[5/5] 检查项目结构...")
 backend_dir = Path(__file__).parent.parent / "backend"
 journal_dir = backend_dir / "journal"
 files = [
-    backend_dir / "api.py",
+    backend_dir / "mcp" / "server.py",
+    backend_dir / "mcp" / "service.py",
     backend_dir / "log_system.py",
     backend_dir / "llm_parser.py",
     journal_dir / "generator.py",

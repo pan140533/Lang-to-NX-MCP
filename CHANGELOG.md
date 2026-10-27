@@ -13,6 +13,17 @@
 
 ## 历史版本
 
+### v2.0 (2026-10-28)
+架构重构 —— 去掉前端与 HTTP 接口，改为纯 MCP 服务器（stdio）
+
+**变更:**
+- 新增 `backend/mcp/`：FastMCP 服务器（8 个 MCP 工具）+ 执行链路 `service.py`
+- 移除整个 `frontend/`（Next.js + Three.js）与 `backend/api.py`
+- `run.py` 改为 MCP 入口，新增 `--check` / `--list-tools`
+- `tools.json` 修正为合法 JSON（58 个工具，36 已实现）
+- 修复 MCP 客户端环境下 NX 启动失败：自动补齐 `UGII_BASE_DIR` / `TMP` / 许可证变量
+- 修复同名 `.prt` 导致 `SaveAs: File already exists`：输出名自动去重
+
 ### v0.1 (2026-06-20)
 测试版0.1 — 基础建模工具链实现
 

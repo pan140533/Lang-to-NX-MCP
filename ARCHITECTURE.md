@@ -8,21 +8,21 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│  第1层：前端层 (Frontend)                                            │
+│  第1层：MCP 客户端 (Host)                                            │
 │  ─────────────────────────────                                      │
-│  文件：frontend/app/page.tsx, components/                           │
-│  功能：用户输入界面 / 3D预览 / 结果展示                               │
+│  客户端：Claude Desktop / Cursor / 任何 MCP Host                     │
+│  功能：把自然语言交给 MCP 工具，展示建模结果                          │
 │  输入：用户文本 "创建一个三叶风扇"                                   │
-│  输出：HTTP请求 → 后端API                                            │
+│  输出：MCP over stdio 请求                                           │
 └─────────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────────┐
-│  第2层：后端层 (Backend API)                                         │
+│  第2层：MCP 协议层 (backend/mcp)                                     │
 │  ─────────────────────────────                                      │
-│  文件：backend/api.py                                                │
-│  功能：接收请求 → 调用Agent Pipeline → 返回结果                       │
-│  输入：HTTP POST 请求                                                │
-│  输出：JSON 响应（状态 + 人类思维 + 步骤 + 模型文件）                  │
+│  文件：backend/mcp/server.py（8 个 MCP 工具）                        │
+│        backend/mcp/service.py（执行链路 + 结果封装）                  │
+│  功能：参数校验 → Agent Pipeline → 生成并执行 C# → 返回结果           │
+│  输出：JSON 响应（状态 + 步骤 + 模型文件路径）                         │
 └─────────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -73,7 +73,7 @@
 │  │ 阶段3: 执行 (Execute)                                        │   │
 │  │                                                              │   │
 │  │  generator.py  → 代码生成: JSON步骤 → C# 脚本                │   │
-│  │     - 56个 _gen_xxx 方法，每个对应一个建模工具                │   │
+│  │     - 58个 _gen_xxx 方法，每个对应一个建模工具                │   │
 │  │     - 嵌入 nx_modeler.cs 的实现代码                           │   │
 │  │     - 保存为 UTF-8 BOM 编码（NX 编译器要求）                  │   │
 │  │                                                              │   │
@@ -100,7 +100,7 @@
 │  文件：backend/journal/nx_modeler.cs, run_journal.exe               │
 │  功能：C#脚本编译执行 → NXOpen API 调用 → 生成 .prt 模型文件          │
 │                                                                     │
-│  nx_modeler.cs：56个方法（17个已验证 + 12个组合实现 + 27个TODO）      │
+│  nx_modeler.cs：58个方法（36个已实现 + 22个TODO占位）                 │
 │  run_journal.exe：NX官方C#脚本执行器（C# 5.0编译器，不支持 $"..."）   │
 │                                                                     │
 │  输入：C#脚本文件 (UTF-8 BOM)                                        │
@@ -138,35 +138,25 @@ Lang-to-NX-MCP/
 │   │   └── executor.py         # 执行调度：AgentPipeline 串联全流程 + 错误处理
 │   │
 │   ├── journal/                # C# 工具层
-│   │   ├── tools.json          # 工具定义（56个工具）
-│   │   ├── generator.py        # JSON → C# 代码生成（56个 _gen_xxx 方法）
-│   │   └── nx_modeler.cs       # NXOpen API 封装（56个方法）
+│   │   ├── tools.json          # 工具定义（58个工具）
+│   │   ├── generator.py        # JSON → C# 代码生成（58个 _gen_xxx 方法）
+│   │   └── nx_modeler.cs       # NXOpen API 封装（58个方法）
 │   │
-│   ├── api.py                  # FastAPI 后端接口
-│   ├── llm_parser.py           # LLM 解析模块（56个工具描述）
+│   ├── mcp/                    # MCP 协议层
+│   │   ├── server.py           #   8 个 MCP 工具（FastMCP）
+│   │   └── service.py          #   执行链路：C# → run_journal → .prt
+│   ├── llm_parser.py           # LLM 解析模块（58个工具描述）
 │   ├── config.py               # 配置管理
 │   ├── session_manager.py      # 会话管理
 │   ├── geometry_utils.py       # 几何计算工具
 │   └── log_system.py           # 日志系统
 │
-├── frontend/                   # 前端界面 (Next.js)
-│   ├── app/
-│   │   ├── page.tsx            # 主页面
-│   │   ├── layout.tsx          # 布局
-│   │   ├── components/         # UI组件
-│   │   │   ├── ThreeViewer.tsx # 3D预览
-│   │   │   └── ViewControls.tsx# 视图控制
-│   │   └── globals.css         # 样式
-│   ├── lib/
-│   │   └── csgOperations.ts    # CSG操作
-│   └── package.json            # 依赖配置
-│
 ├── tests/                      # 测试文件
-│   ├── test_api.py             # API测试
 │   ├── test_llm_parser.py      # LLM解析测试
 │   └── test_benchmark_*.py     # 性能基准测试
 │
-├── run.py                      # 一键启动脚本
+├── run.py                      # MCP 服务器入口（stdio）
+├── .mcp.json                   # MCP 客户端配置模板
 ├── requirements.txt            # Python依赖
 ├── .env.example                # 环境变量示例
 └── README.md                   # 项目说明
@@ -194,7 +184,7 @@ Lang-to-NX-MCP/
 }
 ```
 
-**当前工具数量：** 56个
+**当前工具数量：** 58个
 
 **工具分类：**
 | 分类 | 工具 |
@@ -236,7 +226,7 @@ m.Tool_Extrude(50.0);
 
 **作用：** 封装 NXOpen API，提供稳定的建模接口
 
-**核心类：** `NXModeler`，56个方法
+**核心类：** `NXModeler`，58个方法
 
 | 状态 | 数量 | 说明 |
 |------|------|------|
@@ -250,15 +240,27 @@ m.Tool_Extrude(50.0);
 
 **作用：** 将自然语言转换为结构化建模步骤，作为 Agent 的补充
 
-**TOOL_DESCRIPTIONS：** 56个工具的描述，供 LLM 参考
+**TOOL_DESCRIPTIONS：** 58个工具的描述，供 LLM 参考
 
 ---
 
-### 3.5 api.py — 后端接口
+### 3.5 mcp/ — MCP 协议层
 
-**主要接口：**
-- `POST /api/command` — 执行建模指令
-- `POST /api/session/new` — 创建新会话
+**文件：**
+- `backend/mcp/server.py` — 8 个 MCP 工具（FastMCP，stdio 传输）
+- `backend/mcp/service.py` — 执行链路：自然语言/步骤 → C# → run_journal.exe → .prt
+
+**对外工具：**
+
+| 工具 | 作用 |
+|---|---|
+| `nx_create` | 自然语言 → 完整 Agent 流水线 → 模型 |
+| `nx_execute_plan` | 显式 steps 数组 → 模型 |
+| `nx_create_block` / `nx_create_cylinder` / `nx_create_cone` / `nx_create_sphere` | 体素快捷入口 |
+| `nx_list_tools` | 58 个建模工具及参数、实现状态 |
+| `nx_get_config` | NX 路径与运行环境自检 |
+
+> 没有 HTTP 接口，也不提供前端；唯一入口是 MCP over stdio。
 
 ---
 
@@ -361,10 +363,10 @@ NX 建模结果
 
 | 层级 | 技术 |
 |------|------|
-| 前端 | Next.js + TypeScript + Three.js |
-| 后端 | Python + FastAPI |
+| 协议 | MCP over stdio（FastMCP） |
+| 后端 | Python |
 | Agent | Python 规则引擎 + 模式匹配 |
-| LLM | DeepSeek（作为 Agent 的补充） |
+| LLM | DeepSeek（预留，当前未接入主流程） |
 | CAD | Siemens NX 2412 + NXOpen C# API |
 | 执行 | run_journal.exe |
 
@@ -375,9 +377,8 @@ NX 建模结果
 ### 必需环境
 
 1. **NX 2412** — Siemens NX 软件（含 NXOpen，且本机有可用 License）
-2. **Python 3.10+** — 后端运行环境
-3. **Node.js 18+** — 前端运行环境
-4. **LLM API Key（可选）** — 当前版规划由规则引擎完成，不填也能建模
+2. **Python 3.10+** — 运行环境
+3. **LLM API Key（可选）** — 当前版规划由规则引擎完成，不填也能建模
 
 `.env` 必须先手动创建（`.env` 已在 `.gitignore` 中，不会随仓库发布）。
 **`NX_ROOT` 必须手动填写**——程序不会扫描磁盘自动定位 NX：
@@ -399,7 +400,7 @@ SESSION_DIR=sessions
 ## 七、开发计划
 
 ### Phase 1: 基础功能（已完成）
-- 56个工具注册
+- 58个工具注册
 - JSON → C# 代码生成
 - LLM 解析模块
 - 前端界面
@@ -424,13 +425,15 @@ SESSION_DIR=sessions
 ```bash
 # 1. 安装依赖
 pip install -r requirements.txt
-cd frontend && npm install
 
 # 2. 配置环境变量
 cp .env.example .env
-# 编辑 .env 填入 API Key
+# 编辑 .env，把 NX_ROOT 改成你自己的 NX 安装目录
 
-# 3. 启动
+# 3. 检查配置
+python run.py --check
+
+# 4. 启动 MCP 服务器（一般由 MCP 客户端拉起）
 python run.py
 ```
 

@@ -4,20 +4,12 @@ __pycache__/
 *.pyo
 .env
 
-# NX 模型和脚本（测试产物）
-output/models/*.prt
-output/scripts/*.cs
-
-# 日志
-logs/
-
-# 前端
-frontend/node_modules/
-frontend/.next/
-
-# 会话数据
+# 运行产物
+output/
 sessions/
 training_data/
+logs/
+*.syslog
 
 # 系统
 *.lnk

@@ -27,5 +27,11 @@ NX_ROOT = os.getenv("NX_ROOT", "")
 NX_EXE = os.path.join(NX_ROOT, "NXBIN", "run_journal.exe")
 MODELER_DIR = os.path.join(os.path.dirname(__file__), "tools")
 
+# MCP 客户端启动本服务时通常只传精简环境，NX 需要的变量可能缺失。
+# 这里显式读取，执行时再补到子进程环境里。
+SPLM_LICENSE_SERVER = os.getenv("SPLM_LICENSE_SERVER", "")
+UGII_LANG = os.getenv("UGII_LANG", "")
+NX_TIMEOUT_SECONDS = int(os.getenv("NX_TIMEOUT_SECONDS", "300"))
+
 # ── 会话超时 ──
 SESSION_TIMEOUT_HOURS = int(os.getenv("SESSION_TIMEOUT_HOURS", "24"))

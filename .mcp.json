@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "lang-to-nx-mcp": {
+      "command": "python",
+      "args": [
+        "C:\\path\\to\\Lang-to-NX-MCP\\run.py"
+      ],
+      "env": {
+        "NX_ROOT": "C:\\Program Files\\Siemens\\NX 2412",
+        "NX_TIMEOUT_SECONDS": "300"
+      }
+    }
+  }
+}

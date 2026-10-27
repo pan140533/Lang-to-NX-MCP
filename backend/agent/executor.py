@@ -229,7 +229,7 @@ class AgentPipeline:
         self.planner = planner
         self.executor = executor
         self.last_plan = None  # 保存最近一次规划结果，供外部访问
-        self.current_output_name = ""  # 当前输出名称，每次处理请求前由 api.py 设置
+        self.current_output_name = ""  # 当前输出名称，每次处理请求前由 MCP 层设置
 
     def process(self, user_input: str) -> Dict[str, Any]:
         """

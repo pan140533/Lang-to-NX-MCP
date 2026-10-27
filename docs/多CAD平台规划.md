@@ -1,23 +1,23 @@
 # 多CAD平台架构规划
 
 > 将 Lang-to-NX-MCP 架构扩展到 CATIA、SolidWorks 等多款工程软件
-> 同一个 AI 管线 + 同一个前端 → 不同 CAD 的执行层
+> 同一个 AI 管线 + 同一套 MCP 工具 → 不同 CAD 的执行层
 
 ---
 
 ## 一、现状：Lang-to-NX-MCP（已完成）
 
 ```
-前端 (Next.js + Three.js)
-    ↓
-API (FastAPI)
+MCP 客户端 (Claude Desktop / Cursor / ...)
+    ↓  MCP over stdio
+backend/mcp/ (MCP 协议层)
     ↓
 Agent 管线 (Python)     ← 与CAD无关，可直接复用
     ↓
 NX 执行层 (C# run_journal.exe)
     ├── nx_modeler.cs    ← NX2412 专属
     ├── generator.py     ← 生成 C# 代码
-    └── tools.json       ← 56个工具定义
+    └── tools.json       ← 58个工具定义
 ```
 
 ---
@@ -25,9 +25,9 @@ NX 执行层 (C# run_journal.exe)
 ## 二、多CAD架构设计
 
 ```
-                        前端 (Next.js + Three.js)
+                 MCP 客户端 (Claude Desktop / Cursor / ...)
                               ↓
-                         API (FastAPI)
+                        MCP 协议层 (backend/mcp)
                               ↓
                        Agent 管线 (Python)
                      ┌───────┴───────┐
@@ -216,7 +216,7 @@ NX 执行层收到 `{"tool":"block","params":{...}}` → 生成 C# journal
 CATIA 执行层收到同一个 JSON → 生成 CATIA COM 调用代码
 SolidWorks 执行层收到同一个 JSON → 生成 SolidWorks API 调用代码
 
-**前端、API、Agent 管线一概不用改。**
+**MCP 协议层、Agent 管线一概不用改。**
 
 ---
 
@@ -224,9 +224,8 @@ SolidWorks 执行层收到同一个 JSON → 生成 SolidWorks API 调用代码
 
 ```
 Lang-to-CAD/
-├── frontend/                  ← 共用
 ├── backend/
-│   ├── api.py                 ← 共用
+│   ├── mcp/                   ← 共用（MCP 协议层）
 │   ├── agent/                 ← 共用
 │   ├── tools.json             ← 共用
 │   ├── journal/               ← NX 执行层（当前）

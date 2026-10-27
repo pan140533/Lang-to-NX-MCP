@@ -1,7 +1,4 @@
-fastapi
-uvicorn
-flask
-httpx
+mcp
 pydantic
 python-dotenv
 langchain-openai
