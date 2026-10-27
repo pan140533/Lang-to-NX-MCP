@@ -1,5 +1,5 @@
 """
-配置文件 — Lang-to-NX
+配置文件 — Lang-to-NX-MCP
 
 默认使用 DeepSeek，用户可在 .env 中自定义。
 NX 执行通过 run_journal.exe + C#，不需要 Python NXOpen 环境。

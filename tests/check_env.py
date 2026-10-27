@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 print("=" * 55)
-print("  Lang-to-NX 环境检测")
+print("  Lang-to-NX-MCP 环境检测")
 print("=" * 55)
 
 # 1. 检查 Python 版本

@@ -1,4 +1,8 @@
-<p align="center">
+# Lang-to-NX-MCP
+
+> **A Model Context Protocol (MCP) server that lets Claude/AI drive Siemens NX part modelling from plain language.**
+
+<p>
   <img src="https://img.shields.io/badge/status-active-success" alt="Status">
   <img src="https://img.shields.io/badge/NX-2412-blue" alt="NX">
   <img src="https://img.shields.io/badge/python-3.10+-green" alt="Python">
@@ -6,7 +10,6 @@
   <img src="https://img.shields.io/badge/MCP-1.0-orange" alt="MCP">
 </p>
 
-<h1 align="center">Lang-to-NX</h1>
 <p align="center"><strong>自然语言驱动 Siemens NX 自动建模</strong></p>
 <p align="center">
   <i>"给我一个 17 齿的齿轮"  →  AI 自动规划  →  NX 生成 .prt 文件</i>
@@ -16,7 +19,7 @@
 
 ## 这是什么？
 
-**Lang-to-NX** 是一个 MCP（Model Context Protocol）服务器，让 Claude 等 AI Agent 能直接操控 Siemens NX 进行 3D 建模。你用自然语言描述想要的零件，AI 自动理解、规划步骤、生成 C# 脚本、驱动 NX 执行，最终输出 `.prt` 模型文件。
+**Lang-to-NX-MCP** 是一个 MCP（Model Context Protocol）服务器，让 Claude 等 AI Agent 能直接操控 Siemens NX 进行 3D 建模。你用自然语言描述想要的零件，AI 自动理解、规划步骤、生成 C# 脚本、驱动 NX 执行，最终输出 `.prt` 模型文件。
 
 ```
 你说："做个三叶风扇，中心带孔"
@@ -106,8 +109,8 @@ Siemens NX 是工业级闭源 CAD 软件，广泛用于航空航天、汽车制�
 ### 安装
 
 ```bash
-git clone https://github.com/pan140533/lang-to-nx.git
-cd lang-to-nx
+git clone https://github.com/pan140533/Lang-to-NX-MCP.git
+cd Lang-to-NX-MCP
 pip install -r requirements.txt
 cp .env.example .env
 ```
@@ -133,9 +136,9 @@ python run.py --api              # HTTP API 模式
 ```json
 {
   "mcpServers": {
-    "lang-to-nx": {
+    "lang-to-nx-mcp": {
       "command": "python",
-      "args": ["path/to/lang-to-nx/run.py"],
+      "args": ["path/to/Lang-to-NX-MCP/run.py"],
       "env": {
         "NX_ROOT": "C:\\Program Files\\Siemens\\NX",
         "RUN_JOURNAL_EXE": "C:\\Program Files\\Siemens\\NX\\NXBIN\\run_journal.exe"
@@ -166,7 +169,7 @@ python run.py --api              # HTTP API 模式
 ## 项目结构
 
 ```
-lang-to-nx/
+Lang-to-NX-MCP/
 ├── run.py                        # 启动入口
 ├── CLAUDE.md                     # AI 行为指南（53种工具文档）
 ├── .mcp.json                     # MCP 配置示例

@@ -1,11 +1,11 @@
 # 多CAD平台架构规划
 
-> 将 Lang-to-NX 架构扩展到 CATIA、SolidWorks 等多款工程软件
+> 将 Lang-to-NX-MCP 架构扩展到 CATIA、SolidWorks 等多款工程软件
 > 同一个 AI 管线 + 同一个前端 → 不同 CAD 的执行层
 
 ---
 
-## 一、现状：Lang-to-NX（已完成）
+## 一、现状：Lang-to-NX-MCP（已完成）
 
 ```
 前端 (Next.js + Three.js)

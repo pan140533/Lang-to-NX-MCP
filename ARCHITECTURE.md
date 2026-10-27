@@ -1,4 +1,4 @@
-# Lang-to-NX 项目架构
+# Lang-to-NX-MCP 项目架构
 
 > NX 2412 智能建模助手 — 自然语言转 CAD 模型
 
@@ -126,7 +126,7 @@
 ## 二、目录结构
 
 ```
-Lang-to-NX/
+Lang-to-NX-MCP/
 │
 ├── backend/                    # 后端核心
 │   ├── agent/                  # 智能体模块（已实现）

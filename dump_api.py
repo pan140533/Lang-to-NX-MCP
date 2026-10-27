@@ -43,7 +43,7 @@ dump('NXOpen.CurveCollection')
 dump('NXOpen.SectionList')
 dump('NXOpen.Features.BaseFeatureCollection')
 
-out = r'e:\NX\Lang-to-NX\nx_api_dump.txt'
+out = r'e:\NX\Lang-to-NX-MCP\nx_api_dump.txt'
 with open(out, 'w', encoding='utf-8') as f:
     f.write('\n'.join(lines))
 print('Dumped ' + str(len(lines)) + ' lines to ' + out)

@@ -1,4 +1,4 @@
-"""Lang-to-NX — 一键启动"""
+"""Lang-to-NX-MCP — 一键启动"""
 import subprocess, os, sys, time, signal
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -14,7 +14,7 @@ def cleanup(signum=None, frame=None):
 
 def main():
     print("╔══════════════════════════════════════╗")
-    print("║     Lang-to-NX — 自然语言CAD建模     ║")
+    print("║   Lang-to-NX-MCP — 自然语言CAD建模   ║")
     print("╚══════════════════════════════════════╝\n")
 
     # 检查 .env
